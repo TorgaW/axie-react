@@ -5,6 +5,14 @@ html{
     @apply font-varela;
 }
 
+.non-selected-button{
+  @apply hover:border-purple-300 hover:text-black;
+}
+
+.selected-button{
+  @apply hover:border-purple-800 border-purple-800 text-purple-800;
+}
+
 /* width */
 ::-webkit-scrollbar {
     width: 7px;
@@ -24,3 +32,39 @@ html{
   ::-webkit-scrollbar-thumb:hover {
     background: rgb(136, 183, 197);
   }
+
+.color-aquatic{
+    color: rgb(52,184,205);
+  }
+
+.color-beast{
+  color: rgb(251,184,56);
+}
+
+.color-bird{
+  color: rgb(248,139,189);
+}
+
+.color-bug{
+  color: rgb(247,83,66);
+}
+
+.color-dawn{
+  color: rgb(190,206,255);
+}
+
+.color-dusk{
+  color: rgb(40,144,146);
+}
+
+.color-mech{
+  color: rgb(198,189,212);
+}
+
+.color-plant{
+  color: rgb(108,192,2);
+}
+
+.color-reptile{
+  color: rgb(220,139,228);
+}

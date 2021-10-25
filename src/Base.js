@@ -3,7 +3,7 @@ function Content(props) {
     let render = (<></>);
   
     return (
-      <div id="content" className="content container bg-white min-h-screen px-2 py-5">
+      <div id="content" className={`content container bg-white min-h-screen px-2 py-5`}>
         {props.children ?? render}
       </div>
     );
