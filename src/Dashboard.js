@@ -634,7 +634,7 @@ function Dashboard() {
           {playerAxiesLoaded * playerInfoLoaded ? (
             <div className={"md:w-11/12 w-full self-center h-auto " + (selectedPlayer === -1 ? "hidden" : "")}>
               <div className="w-full flex flex-col md:grid md:grid-flow-col md:gap-8" style={{ gridAutoColumns: "min-content auto" }}>
-                <div className="flex flex-col md:w-64 w-full text-center md:text-left">
+                <div className="flex flex-col mb-8 md:w-64 w-full text-center md:text-left">
                   <div className="avatar w-full h-auto flex justify-center">
                     <img
                       src={selectedPlayer !== -1 && playerAxiesLoaded * playerInfoLoaded ? axieTable[selectedPlayer].axieAvatar : ""}
