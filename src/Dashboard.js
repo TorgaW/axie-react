@@ -2,7 +2,7 @@ import { Header, Content, Footer } from "./Base";
 import React from "react";
 import { UIStore } from "./UIStore";
 import { LoadingComponent } from "./LoadingComponent";
-import { stringify } from "postcss";
+import { formatRFC7231, add, fromUnixTime } from "date-fns";
 
 function TableCellComponent(props) {
   /*
@@ -28,7 +28,8 @@ function TableCellComponent(props) {
 
   */
 
-  const axieTable = UIStore.useState((s) => s.axieTable);
+  let axieTable = UIStore.useState((s) => s.axieTable);
+  let getPlayerInfo = UIStore.useState(s=>s.getPlayerInfo);
 
   function RemoveFromTable() {
     console.log(axieTable);
@@ -48,12 +49,12 @@ function TableCellComponent(props) {
       <td className="font-bold">{props.order ?? "?"}</td> {/* # */}
       <td
         onClick={() => {
-          UIStore.update((s) => {
-            if (s.selectedPlayer !== props.id - 1) {
+          if (axieTable.selectedPlayer !== props.id - 1) {
+            UIStore.update((s) => {
               s.selectedPlayer = props.id - 1;
-              s.getPlayerInfo(s.axieTable[props.id - 1].ronin, props.id - 1);
-            }
-          });
+            });
+            props.getPlayerInfo(axieTable[props.id - 1].ronin, props.id - 1);
+          }
         }}
         className="text-purple-500 font-bold hover:text-purple-900 cursor-pointer"
       >
@@ -70,8 +71,26 @@ function TableCellComponent(props) {
       <td>{props.content ? props.content.slpPerDay : "?"}</td> {/* SLP/day */}
       <td>{(props.content ? props.content.slpManager : "?") + " (" + (props.content ? props.content.slpManagerPerc : "?") + "%)" /*0 (0%)*/}</td>{" "}
       {/* Manager SLP */}
-      <td>{props.content ? props.content.nextClaim : "?"}</td> {/* Next Claim */}
-      <td>{props.content ? props.content.qualityTracker : "?"}</td> {/* Quality Tracker */}
+      <td style={{ maxWidth: "200px" }}>{props.content ? formatRFC7231(props.content.nextClaim) : "?"}</td> {/* Next Claim */}
+      <td className="">
+        {/*props.content ? props.content.qualityTracker : "?"*/}
+        <div
+          className={
+            "w-4 h-4 ml-16 bg-" +
+            (props.content
+              ? props.content.qualityTracker === 0
+                ? "green"
+                : props.content.qualityTracker === 1
+                ? "yellow"
+                : props.content.qualityTracker === 2
+                ? "red"
+                : "gray"
+              : "black") +
+            "-400"
+          }
+        ></div>
+      </td>{" "}
+      {/* Quality Tracker */}
       {/*<td>{props.content ? props.content.telegram : "?"}</td>  Telegram */}
       <td>
         <button
@@ -131,15 +150,44 @@ function TilesComponent() {
 }
 
 function TableComponent(props) {
+  /*
+
+  sorts:
+  1) id
+  2) id-reversed
+  3) name
+  4) name-reversed
+  5) team
+  6) team-reversed
+  7) formation
+  8) formation-reversed
+  9) slp
+  10) slp-reversed
+  11) slplimit
+  12) slplimit-reversed
+  13) slpday
+  14) slpday-reversed
+  15) slpmanager
+  16) slpmanager-reversed
+  17) time
+  18) time-reversed
+  19) quality
+  20) quality-reversed
+
+  */
+  const [sortOrder, setSortOrder] = React.useState("id");
+
   let tableCells = [];
+  let copyPropsContent = props.content;
   let counter = 1;
 
-  if (props.content) {
-    for (const i of props.content) {
+  function FillTableCells() {
+    for (const i of copyPropsContent) {
       tableCells.push(
         <TableCellComponent
           content={{
             name: i.name,
+            gameName: i.name.split(' | '),
             team: i.team,
             formation: i.formation,
             slp: i.slp,
@@ -153,11 +201,154 @@ function TableComponent(props) {
           order={counter}
           id={counter}
           key={counter}
+          getPlayerInfo={props.getPlayerInfo}
         />
       );
-
       counter++;
     }
+  }
+
+  if (props.content) {
+    switch (sortOrder) {
+      case "id":
+        FillTableCells();
+        break;
+      case "id-reversed":
+        FillTableCells();
+        tableCells.reverse();
+        break;
+      case "name":
+        FillTableCells();
+        tableCells.sort((a, b) => a.props.content.name.localeCompare(b.props.content.name));
+        break;
+      case "name-reversed":
+        FillTableCells();
+        tableCells.sort((a, b) => a.props.content.name.localeCompare(b.props.content.name));
+        tableCells.reverse();
+        break;
+      case "team":
+        FillTableCells();
+        tableCells.sort((a, b) => a.props.content.team.localeCompare(b.props.content.team));
+        break;
+      case "team-reversed":
+        FillTableCells();
+        tableCells.sort((a, b) => a.props.content.team.localeCompare(b.props.content.team));
+        tableCells.reverse();
+        break;
+      case "formation":
+        FillTableCells();
+        tableCells.sort((a, b) => a.props.content.formation.localeCompare(b.props.content.formation));
+        break;
+      case "formation-reversed":
+        FillTableCells();
+        tableCells.sort((a, b) => a.props.content.formation.localeCompare(b.props.content.formation));
+        tableCells.reverse();
+        break;
+      case "slp":
+        FillTableCells();
+        tableCells.sort((a, b) => a.props.content.slp - b.props.content.slp);
+        break;
+      case "slp-reversed":
+        FillTableCells();
+        tableCells.sort((a, b) => a.props.content.slp - b.props.content.slp);
+        tableCells.reverse();
+        break;
+      case "slplimit":
+        FillTableCells();
+        tableCells.sort((a, b) => a.props.content.slpDailyLimit - b.props.content.slpDailyLimit);
+        break;
+      case "slplimit-reversed":
+        FillTableCells();
+        tableCells.sort((a, b) => a.props.content.slpDailyLimit - b.props.content.slpDailyLimit);
+        tableCells.reverse();
+        break;
+      case "slpday":
+        FillTableCells();
+        tableCells.sort((a, b) => a.props.content.slpPerDay - b.props.content.slpPerDay);
+        break;
+      case "slpday-reversed":
+        FillTableCells();
+        tableCells.sort((a, b) => a.props.content.slpPerDay - b.props.content.slpPerDay);
+        tableCells.reverse();
+        break;
+      case "slpmanager":
+        FillTableCells();
+        tableCells.sort((a, b) => a.props.content.slpManager - b.props.content.slpManager);
+        break;
+      case "slpmanager-reversed":
+        FillTableCells();
+        tableCells.sort((a, b) => a.props.content.slpManager - b.props.content.slpManager);
+        tableCells.reverse();
+        break;
+      case "time":
+        FillTableCells();
+        tableCells.sort((a, b) => {
+          let da = new Date(a.props.content.nextClaim);
+          let db = new Date(b.props.content.nextClaim);
+          return da - db;
+        });
+        break;
+      case "time-reversed":
+        FillTableCells();
+        tableCells.sort((a, b) => {
+          let da = new Date(a.props.content.nextClaim);
+          let db = new Date(b.props.content.nextClaim);
+          return da - db;
+        });
+        tableCells.reverse();
+        break;
+      case "quality":
+        FillTableCells();
+        tableCells.sort((a, b) => a.props.content.qualityTracker - b.props.content.qualityTracker);
+        break;
+      case "quality-reversed":
+        FillTableCells();
+        tableCells.sort((a, b) => a.props.content.qualityTracker - b.props.content.qualityTracker);
+        tableCells.reverse();
+        break;
+      default:
+        break;
+    }
+  }
+
+  function SortByOrder() {
+    sortOrder === "id" ? setSortOrder("id-reversed") : setSortOrder("id");
+  }
+
+  function SortByName() {
+    sortOrder === "name" ? setSortOrder("name-reversed") : setSortOrder("name");
+  }
+
+  function SortByTeam() {
+    sortOrder === "team" ? setSortOrder("team-reversed") : setSortOrder("team");
+  }
+
+  function SortByFormation() {
+    sortOrder === "formation" ? setSortOrder("formation-reversed") : setSortOrder("formation");
+  }
+
+  function SortBySlp() {
+    sortOrder === "slp" ? setSortOrder("slp-reversed") : setSortOrder("slp");
+  }
+
+  function SortBySlpLimit() {
+    sortOrder === "slplimit" ? setSortOrder("slplimit-reversed") : setSortOrder("slplimit");
+  }
+
+  function SortBySlpDay() {
+    sortOrder === "slpday" ? setSortOrder("slpday-reversed") : setSortOrder("slpday");
+  }
+
+  function SortBySlpManager() {
+    sortOrder === "slpmanager" ? setSortOrder("slpmanager-reversed") : setSortOrder("slpmanager");
+  }
+
+  function SortByTime() {
+    sortOrder === "time" ? setSortOrder("time-reversed") : setSortOrder("time");
+  }
+
+  function SortByQuality() {
+    sortOrder === "quality" ? setSortOrder("quality-reversed") : setSortOrder("quality");
   }
 
   return (
@@ -170,35 +361,65 @@ function TableComponent(props) {
       >
         <thead>
           <tr className="border-t-2 border-b-2 h-12 bg-blue-300 text-xl text-center">
-            <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+            <th
+              onClick={SortByOrder}
+              className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300"
+            >
               &nbsp;&nbsp;#&nbsp;&nbsp;
             </th>
-            <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+            <th
+              onClick={SortByName}
+              className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300"
+            >
               Name
             </th>
             <th className="border-4 border-blue-300 cursor-default">Avatar</th>
-            <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+            <th
+              onClick={SortByTeam}
+              className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300"
+            >
               Team
             </th>
-            <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+            <th
+              onClick={SortByFormation}
+              className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300"
+            >
               Axies Formation
             </th>
-            <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+            <th
+              onClick={SortBySlp}
+              className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300"
+            >
               &nbsp;&nbsp;&nbsp;SLP&nbsp;&nbsp;&nbsp;
             </th>
-            <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+            <th
+              onClick={SortBySlpLimit}
+              className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300"
+            >
               Daily SLP Limit
             </th>
-            <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+            <th
+              onClick={SortBySlpDay}
+              className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300"
+            >
               SLP/day
             </th>
-            <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+            <th
+              onClick={SortBySlpManager}
+              className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300"
+            >
               Manager SLP
             </th>
-            <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+            <th
+              onClick={SortByTime}
+              className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300"
+            >
               Next Claim
             </th>
-            <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+            <th
+              onClick={SortByQuality}
+              className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300"
+            >
               Quality Tracker
             </th>
             {/*<th className="border-4 border-blue-300 cursor-default">
@@ -215,32 +436,31 @@ function TableComponent(props) {
 
 function TableControlComponent() {
   function AddNewPlayer() {
-    //let fields = document.querySelectorAll('[id$="-inp"]');
-    //console.log(fields);
-    /*fetch("/getSlp",{method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },})
-      .then((response) => {
-        if (response.ok) {
-          return response.text();
-        } else {
-          throw new Error(response.status);
-        }
-      })
-      .then((data) => {
-        console.log(data);
-        UIStore.update((s) => {
-          s.axieTable.push();
-        });
-      })
-      .catch((error) => {
-        console.log(error);
-      });*/
-    /*fetch("/addTracker", {
+    let fields = document.querySelectorAll('[id$="-inp"]');
+    console.log(fields);
+
+    if (fields && fields.length < 4) {
+      return;
+    }
+
+    let name = fields[0].value;
+    let ronin = fields[1].value;
+    let perc = fields[2].value;
+    let limit = fields[3].value;
+
+    if (name.trim().length < 1 && ronin.trim().length < 1 && perc.trim().length < 1 && limit.trim().length < 1) {
+      return;
+    }
+
+    function addPlayer(arg) {
+      UIStore.update((s) => {
+        s.axieTable = [...s.axieTable, arg];
+      });
+    }
+
+    fetch("/api/addTracker", {
       method: "POST",
-      body: JSON.stringify({ name: "test-1", ronin: "edbc6bd7161364b747926c22a864ceff814510bd", percentage: "30" }),
+      body: JSON.stringify({ name: name, ronin: ronin, percentage: perc, limit: limit }),
       headers: {
         "Content-Type": "application/json",
       },
@@ -254,13 +474,31 @@ function TableControlComponent() {
       })
       .then((data) => {
         console.log(data);
-        UIStore.update((s) => {
-          s.axieTable.push();
+        let i = data.status;
+        addPlayer({
+          name: name,
+          team: "N/A",
+          formation: "N/A",
+          slp: i.in_game_slp,
+          slpDailyLimit: limit,
+          slpPerDay: NaN,
+          slpManager: i.in_game_slp * perc * 0.01,
+          slpManagerPerc: perc,
+          nextClaim: fromUnixTime(i.next_claim),
+          qualityTracker: 3,
+          telegram: "",
+          notifies: "",
+          ronin: ronin,
+          axies: {},
+          axieAvatar: "",
+          axiesLoaded: 0,
         });
       })
       .catch((error) => {
         console.log(error);
-      });*/
+      });
+
+    console.log("new player");
   }
 
   return (
@@ -329,155 +567,191 @@ function PlayerCardContentProvider(props) {
         let axies = props.data.axies;
         return (
           <>
-          <div className="flex flex-wrap justify-center mt-4">
-              <div className="w-80 m-4 flex flex-col justify-center items-center border-2 border-purple-500 rounded-lg hover:border-purple-800 transition-all duration-150" style={{height: '26rem'}}>
-                <h3 className='font-bold text-xl text-purple-400'><span className='text-purple-800 text-2xl'>{axies[0].name.split(' | ')[0]}</span>{' #' + axies[0].id}</h3>
-                <h5 className='font-bold text-xl bg-purple-100 w-full text-center'>Breed count: {axies[0].breedCount}</h5>
-                <div className='w-full h-10 flex items-center justify-between px-1 font-bold'>
-                  <p className='bg-green-200 rounded-lg px-1'>{'HP: '+axies[0].stats.hp}</p>
-                  <p className='bg-yellow-300 rounded-lg px-1'>{'Speed: '+axies[0].stats.speed}</p>
-                  <p className='bg-purple-400 rounded-lg px-1'>{'Skill: '+axies[0].stats.skill}</p>
-                  <p className='bg-red-200 rounded-lg px-1'>{'Morale: '+axies[0].stats.morale}</p>
+            <div className="flex flex-wrap justify-center mt-4">
+              <div
+                className="w-80 m-4 flex flex-col justify-center items-center border-2 border-purple-500 rounded-lg hover:border-purple-800 transition-all duration-150"
+                style={{ height: "26rem" }}
+              >
+                <h3 className="font-bold text-xl text-purple-400">
+                  <span className="text-purple-800 text-2xl">{axies[0].name.split(" | ")[0]}</span>
+                  {" #" + axies[0].id}
+                </h3>
+                <h5 className="font-bold text-xl bg-purple-100 w-full text-center">Breed count: {axies[0].breedCount}</h5>
+                <div className="w-full h-10 flex items-center justify-between px-1 font-bold">
+                  <p className="bg-green-200 rounded-lg px-1">{"HP: " + axies[0].stats.hp}</p>
+                  <p className="bg-yellow-300 rounded-lg px-1">{"Speed: " + axies[0].stats.speed}</p>
+                  <p className="bg-purple-400 rounded-lg px-1">{"Skill: " + axies[0].stats.skill}</p>
+                  <p className="bg-red-200 rounded-lg px-1">{"Morale: " + axies[0].stats.morale}</p>
                 </div>
-                <img src={axies[0].image} alt="axie 0" width='128px' height='128px' className='w-32 h-32 mt-1 object-cover border-2 border-purple-500 rounded-full hover:border-purple-800 transition-all duration-150'/>
-                <div className='w-full h-6 bg-purple-100 mt-3 flex items-center'>
-                  <img src="part_eyes.svg" alt="eyes" width='24px' height='24px' className='ml-2'/>
-                  <div className={'w-full flex font-bold justify-center items-center mr-8 ' + 'color-'+axies[0].parts[0].class.toLowerCase()}>
+                <img
+                  src={axies[0].image}
+                  alt="axie 0"
+                  width="128px"
+                  height="128px"
+                  className="w-32 h-32 mt-1 object-cover border-2 border-purple-500 rounded-full hover:border-purple-800 transition-all duration-150"
+                />
+                <div className="w-full h-6 bg-purple-100 mt-3 flex items-center">
+                  <img src="part_eyes.svg" alt="eyes" width="24px" height="24px" className="ml-2" />
+                  <div className={"w-full flex font-bold justify-center items-center mr-8 " + "color-" + axies[0].parts[0].class.toLowerCase()}>
                     <p>{axies[0].parts[0].name}</p>
                   </div>
                 </div>
-                <div className='w-full h-6 flex items-center'>
-                  <img src="part_ears.svg" alt="ears" width='24px' height='24px' className='ml-2'/>
-                  <div className={'w-full flex font-bold justify-center items-center mr-8 ' + 'color-'+axies[0].parts[1].class.toLowerCase()}>
+                <div className="w-full h-6 flex items-center">
+                  <img src="part_ears.svg" alt="ears" width="24px" height="24px" className="ml-2" />
+                  <div className={"w-full flex font-bold justify-center items-center mr-8 " + "color-" + axies[0].parts[1].class.toLowerCase()}>
                     <p>{axies[0].parts[1].name}</p>
                   </div>
                 </div>
-                <div className='w-full h-6 bg-purple-100 mt-1 flex items-center'>
-                  <img src="part_back.svg" alt="back" width='24px' height='24px' className='ml-2'/>
-                  <div className={'w-full flex font-bold justify-center items-center mr-8 ' + 'color-'+axies[0].parts[2].class.toLowerCase()}>
+                <div className="w-full h-6 bg-purple-100 mt-1 flex items-center">
+                  <img src="part_back.svg" alt="back" width="24px" height="24px" className="ml-2" />
+                  <div className={"w-full flex font-bold justify-center items-center mr-8 " + "color-" + axies[0].parts[2].class.toLowerCase()}>
                     <p>{axies[0].parts[2].name}</p>
                   </div>
                 </div>
-                <div className='w-full h-6 flex items-center'>
-                  <img src="part_mouth.svg" alt="mouth" width='24px' height='24px' className='ml-2'/>
-                  <div className={'w-full flex font-bold justify-center items-center mr-8 ' + 'color-'+axies[0].parts[3].class.toLowerCase()}>
+                <div className="w-full h-6 flex items-center">
+                  <img src="part_mouth.svg" alt="mouth" width="24px" height="24px" className="ml-2" />
+                  <div className={"w-full flex font-bold justify-center items-center mr-8 " + "color-" + axies[0].parts[3].class.toLowerCase()}>
                     <p>{axies[0].parts[3].name}</p>
                   </div>
                 </div>
-                <div className='w-full h-6 bg-purple-100 flex items-center'>
-                  <img src="part_horn.svg" alt="horn" width='24px' height='24px' className='ml-2'/>
-                  <div className={'w-full flex font-bold justify-center items-center mr-8 ' + 'color-'+axies[0].parts[4].class.toLowerCase()}>
+                <div className="w-full h-6 bg-purple-100 flex items-center">
+                  <img src="part_horn.svg" alt="horn" width="24px" height="24px" className="ml-2" />
+                  <div className={"w-full flex font-bold justify-center items-center mr-8 " + "color-" + axies[0].parts[4].class.toLowerCase()}>
                     <p>{axies[0].parts[4].name}</p>
                   </div>
                 </div>
-                <div className='w-full h-6 flex items-center'>
-                  <img src="part_tail.svg" alt="tail" width='24px' height='24px' className='ml-2'/>
-                  <div className={'w-full flex font-bold justify-center items-center mr-8 ' + 'color-'+axies[0].parts[5].class.toLowerCase()}>
+                <div className="w-full h-6 flex items-center">
+                  <img src="part_tail.svg" alt="tail" width="24px" height="24px" className="ml-2" />
+                  <div className={"w-full flex font-bold justify-center items-center mr-8 " + "color-" + axies[0].parts[5].class.toLowerCase()}>
                     <p>{axies[0].parts[5].name}</p>
                   </div>
                 </div>
-              </div> 
-              <div className="w-80 m-4 flex flex-col justify-center items-center border-2 border-purple-500 rounded-lg hover:border-purple-800 transition-all duration-150" style={{height: '26rem'}}>
-                <h3 className='font-bold text-xl text-purple-400'><span className='text-purple-800 text-2xl'>{axies[1].name.split(' | ')[0]}</span>{' #' + axies[1].id}</h3>
-                <h5 className='font-bold text-xl bg-purple-100 w-full text-center'>Breed count: {axies[1].breedCount}</h5>
-                <div className='w-full h-10 flex items-center justify-between px-1 font-bold'>
-                  <p className='bg-green-200 rounded-lg px-1'>{'HP: '+axies[1].stats.hp}</p>
-                  <p className='bg-yellow-300 rounded-lg px-1'>{'Speed: '+axies[1].stats.speed}</p>
-                  <p className='bg-purple-400 rounded-lg px-1'>{'Skill: '+axies[1].stats.skill}</p>
-                  <p className='bg-red-200 rounded-lg px-1'>{'Morale: '+axies[1].stats.morale}</p>
+              </div>
+              <div
+                className="w-80 m-4 flex flex-col justify-center items-center border-2 border-purple-500 rounded-lg hover:border-purple-800 transition-all duration-150"
+                style={{ height: "26rem" }}
+              >
+                <h3 className="font-bold text-xl text-purple-400">
+                  <span className="text-purple-800 text-2xl">{axies[1].name.split(" | ")[0]}</span>
+                  {" #" + axies[1].id}
+                </h3>
+                <h5 className="font-bold text-xl bg-purple-100 w-full text-center">Breed count: {axies[1].breedCount}</h5>
+                <div className="w-full h-10 flex items-center justify-between px-1 font-bold">
+                  <p className="bg-green-200 rounded-lg px-1">{"HP: " + axies[1].stats.hp}</p>
+                  <p className="bg-yellow-300 rounded-lg px-1">{"Speed: " + axies[1].stats.speed}</p>
+                  <p className="bg-purple-400 rounded-lg px-1">{"Skill: " + axies[1].stats.skill}</p>
+                  <p className="bg-red-200 rounded-lg px-1">{"Morale: " + axies[1].stats.morale}</p>
                 </div>
-                <img src={axies[1].image} alt="axie 0" width='128px' height='128px' className='w-32 h-32 mt-1 object-cover border-2 border-purple-500 rounded-full hover:border-purple-800 transition-all duration-150'/>
-                <div className='w-full h-6 bg-purple-100 mt-3 flex items-center'>
-                  <img src="part_eyes.svg" alt="eyes" width='24px' height='24px' className='ml-2'/>
-                  <div className={'w-full flex font-bold justify-center items-center mr-8 ' + 'color-'+axies[1].parts[0].class.toLowerCase()}>
+                <img
+                  src={axies[1].image}
+                  alt="axie 0"
+                  width="128px"
+                  height="128px"
+                  className="w-32 h-32 mt-1 object-cover border-2 border-purple-500 rounded-full hover:border-purple-800 transition-all duration-150"
+                />
+                <div className="w-full h-6 bg-purple-100 mt-3 flex items-center">
+                  <img src="part_eyes.svg" alt="eyes" width="24px" height="24px" className="ml-2" />
+                  <div className={"w-full flex font-bold justify-center items-center mr-8 " + "color-" + axies[1].parts[0].class.toLowerCase()}>
                     <p>{axies[1].parts[0].name}</p>
                   </div>
                 </div>
-                <div className='w-full h-6 flex items-center'>
-                  <img src="part_ears.svg" alt="ears" width='24px' height='24px' className='ml-2'/>
-                  <div className={'w-full flex font-bold justify-center items-center mr-8 ' + 'color-'+axies[1].parts[1].class.toLowerCase()}>
+                <div className="w-full h-6 flex items-center">
+                  <img src="part_ears.svg" alt="ears" width="24px" height="24px" className="ml-2" />
+                  <div className={"w-full flex font-bold justify-center items-center mr-8 " + "color-" + axies[1].parts[1].class.toLowerCase()}>
                     <p>{axies[1].parts[1].name}</p>
                   </div>
                 </div>
-                <div className='w-full h-6 bg-purple-100 mt-1 flex items-center'>
-                  <img src="part_back.svg" alt="back" width='24px' height='24px' className='ml-2'/>
-                  <div className={'w-full flex font-bold justify-center items-center mr-8 ' + 'color-'+axies[1].parts[2].class.toLowerCase()}>
+                <div className="w-full h-6 bg-purple-100 mt-1 flex items-center">
+                  <img src="part_back.svg" alt="back" width="24px" height="24px" className="ml-2" />
+                  <div className={"w-full flex font-bold justify-center items-center mr-8 " + "color-" + axies[1].parts[2].class.toLowerCase()}>
                     <p>{axies[1].parts[2].name}</p>
                   </div>
                 </div>
-                <div className='w-full h-6 flex items-center'>
-                  <img src="part_mouth.svg" alt="mouth" width='24px' height='24px' className='ml-2'/>
-                  <div className={'w-full flex font-bold justify-center items-center mr-8 ' + 'color-'+axies[1].parts[3].class.toLowerCase()}>
+                <div className="w-full h-6 flex items-center">
+                  <img src="part_mouth.svg" alt="mouth" width="24px" height="24px" className="ml-2" />
+                  <div className={"w-full flex font-bold justify-center items-center mr-8 " + "color-" + axies[1].parts[3].class.toLowerCase()}>
                     <p>{axies[1].parts[3].name}</p>
                   </div>
                 </div>
-                <div className='w-full h-6 bg-purple-100 flex items-center'>
-                  <img src="part_horn.svg" alt="horn" width='24px' height='24px' className='ml-2'/>
-                  <div className={'w-full flex font-bold justify-center items-center mr-8 ' + 'color-'+axies[1].parts[4].class.toLowerCase()}>
+                <div className="w-full h-6 bg-purple-100 flex items-center">
+                  <img src="part_horn.svg" alt="horn" width="24px" height="24px" className="ml-2" />
+                  <div className={"w-full flex font-bold justify-center items-center mr-8 " + "color-" + axies[1].parts[4].class.toLowerCase()}>
                     <p>{axies[1].parts[4].name}</p>
                   </div>
                 </div>
-                <div className='w-full h-6 flex items-center'>
-                  <img src="part_tail.svg" alt="tail" width='24px' height='24px' className='ml-2'/>
-                  <div className={'w-full flex font-bold justify-center items-center mr-8 ' + 'color-'+axies[1].parts[5].class.toLowerCase()}>
+                <div className="w-full h-6 flex items-center">
+                  <img src="part_tail.svg" alt="tail" width="24px" height="24px" className="ml-2" />
+                  <div className={"w-full flex font-bold justify-center items-center mr-8 " + "color-" + axies[1].parts[5].class.toLowerCase()}>
                     <p>{axies[1].parts[5].name}</p>
                   </div>
                 </div>
-              </div> 
-              <div className="w-80 m-4 flex flex-col justify-center items-center border-2 border-purple-500 rounded-lg hover:border-purple-800 transition-all duration-150" style={{height: '26rem'}}>
-                <h3 className='font-bold text-xl text-purple-400'><span className='text-purple-800 text-2xl'>{axies[2].name.split(' | ')[0]}</span>{' #' + axies[2].id}</h3>
-                <h5 className='font-bold text-xl bg-purple-100 w-full text-center'>Breed count: {axies[2].breedCount}</h5>
-                <div className='w-full h-10 flex items-center justify-between px-1 font-bold'>
-                  <p className='bg-green-200 rounded-lg px-1'>{'HP: '+axies[2].stats.hp}</p>
-                  <p className='bg-yellow-300 rounded-lg px-1'>{'Speed: '+axies[2].stats.speed}</p>
-                  <p className='bg-purple-400 rounded-lg px-1'>{'Skill: '+axies[2].stats.skill}</p>
-                  <p className='bg-red-200 rounded-lg px-1'>{'Morale: '+axies[2].stats.morale}</p>
+              </div>
+              <div
+                className="w-80 m-4 flex flex-col justify-center items-center border-2 border-purple-500 rounded-lg hover:border-purple-800 transition-all duration-150"
+                style={{ height: "26rem" }}
+              >
+                <h3 className="font-bold text-xl text-purple-400">
+                  <span className="text-purple-800 text-2xl">{axies[2].name.split(" | ")[0]}</span>
+                  {" #" + axies[2].id}
+                </h3>
+                <h5 className="font-bold text-xl bg-purple-100 w-full text-center">Breed count: {axies[2].breedCount}</h5>
+                <div className="w-full h-10 flex items-center justify-between px-1 font-bold">
+                  <p className="bg-green-200 rounded-lg px-1">{"HP: " + axies[2].stats.hp}</p>
+                  <p className="bg-yellow-300 rounded-lg px-1">{"Speed: " + axies[2].stats.speed}</p>
+                  <p className="bg-purple-400 rounded-lg px-1">{"Skill: " + axies[2].stats.skill}</p>
+                  <p className="bg-red-200 rounded-lg px-1">{"Morale: " + axies[2].stats.morale}</p>
                 </div>
-                <img src={axies[2].image} alt="axie 0" width='128px' height='128px' className='w-32 h-32 mt-1 object-cover border-2 border-purple-500 rounded-full hover:border-purple-800 transition-all duration-150'/>
-                <div className='w-full h-6 bg-purple-100 mt-3 flex items-center'>
-                  <img src="part_eyes.svg" alt="eyes" width='24px' height='24px' className='ml-2'/>
-                  <div className={'w-full flex font-bold justify-center items-center mr-8 ' + 'color-'+axies[2].parts[0].class.toLowerCase()}>
+                <img
+                  src={axies[2].image}
+                  alt="axie 0"
+                  width="128px"
+                  height="128px"
+                  className="w-32 h-32 mt-1 object-cover border-2 border-purple-500 rounded-full hover:border-purple-800 transition-all duration-150"
+                />
+                <div className="w-full h-6 bg-purple-100 mt-3 flex items-center">
+                  <img src="part_eyes.svg" alt="eyes" width="24px" height="24px" className="ml-2" />
+                  <div className={"w-full flex font-bold justify-center items-center mr-8 " + "color-" + axies[2].parts[0].class.toLowerCase()}>
                     <p>{axies[2].parts[0].name}</p>
                   </div>
                 </div>
-                <div className='w-full h-6 flex items-center'>
-                  <img src="part_ears.svg" alt="ears" width='24px' height='24px' className='ml-2'/>
-                  <div className={'w-full flex font-bold justify-center items-center mr-8 ' + 'color-'+axies[2].parts[1].class.toLowerCase()}>
+                <div className="w-full h-6 flex items-center">
+                  <img src="part_ears.svg" alt="ears" width="24px" height="24px" className="ml-2" />
+                  <div className={"w-full flex font-bold justify-center items-center mr-8 " + "color-" + axies[2].parts[1].class.toLowerCase()}>
                     <p>{axies[2].parts[1].name}</p>
                   </div>
                 </div>
-                <div className='w-full h-6 bg-purple-100 mt-1 flex items-center'>
-                  <img src="part_back.svg" alt="back" width='24px' height='24px' className='ml-2'/>
-                  <div className={'w-full flex font-bold justify-center items-center mr-8 ' + 'color-'+axies[2].parts[2].class.toLowerCase()}>
+                <div className="w-full h-6 bg-purple-100 mt-1 flex items-center">
+                  <img src="part_back.svg" alt="back" width="24px" height="24px" className="ml-2" />
+                  <div className={"w-full flex font-bold justify-center items-center mr-8 " + "color-" + axies[2].parts[2].class.toLowerCase()}>
                     <p>{axies[2].parts[2].name}</p>
                   </div>
                 </div>
-                <div className='w-full h-6 flex items-center'>
-                  <img src="part_mouth.svg" alt="mouth" width='24px' height='24px' className='ml-2'/>
-                  <div className={'w-full flex font-bold justify-center items-center mr-8 ' + 'color-'+axies[2].parts[3].class.toLowerCase()}>
+                <div className="w-full h-6 flex items-center">
+                  <img src="part_mouth.svg" alt="mouth" width="24px" height="24px" className="ml-2" />
+                  <div className={"w-full flex font-bold justify-center items-center mr-8 " + "color-" + axies[2].parts[3].class.toLowerCase()}>
                     <p>{axies[2].parts[3].name}</p>
                   </div>
                 </div>
-                <div className='w-full h-6 bg-purple-100 flex items-center'>
-                  <img src="part_horn.svg" alt="horn" width='24px' height='24px' className='ml-2'/>
-                  <div className={'w-full flex font-bold justify-center items-center mr-8 ' + 'color-'+axies[2].parts[4].class.toLowerCase()}>
+                <div className="w-full h-6 bg-purple-100 flex items-center">
+                  <img src="part_horn.svg" alt="horn" width="24px" height="24px" className="ml-2" />
+                  <div className={"w-full flex font-bold justify-center items-center mr-8 " + "color-" + axies[2].parts[4].class.toLowerCase()}>
                     <p>{axies[2].parts[4].name}</p>
                   </div>
                 </div>
-                <div className='w-full h-6 flex items-center'>
-                  <img src="part_tail.svg" alt="tail" width='24px' height='24px' className='ml-2'/>
-                  <div className={'w-full flex font-bold justify-center items-center mr-8 ' + 'color-'+axies[2].parts[5].class.toLowerCase()}>
+                <div className="w-full h-6 flex items-center">
+                  <img src="part_tail.svg" alt="tail" width="24px" height="24px" className="ml-2" />
+                  <div className={"w-full flex font-bold justify-center items-center mr-8 " + "color-" + axies[2].parts[5].class.toLowerCase()}>
                     <p>{axies[2].parts[5].name}</p>
                   </div>
                 </div>
-              </div> 
-          </div>
+              </div>
+            </div>
           </>
         );
       case 1:
         return <div>Analytics</div>;
       case 2:
-        return <div>Notifications</div>;
+        return <div className="text-xl py-5">Notifications are not available for now.</div>;
       default:
         return <></>;
     }
@@ -487,42 +761,24 @@ function PlayerCardContentProvider(props) {
 }
 
 function Dashboard() {
-  const axieTable = UIStore.useState((s) => s.axieTable);
-  const selectedPlayer = UIStore.useState((s) => s.selectedPlayer);
-  const selectedButton = UIStore.useState((s) => s.selectedButton);
-  const slpToDollar = UIStore.useState((s) => s.slpToDollar);
+  let axieTable = UIStore.useState((s) => s.axieTable);
+  let selectedPlayer = UIStore.useState((s) => s.selectedPlayer);
+  let selectedButton = UIStore.useState((s) => s.selectedButton);
+  let slpToDollar = UIStore.useState((s) => s.slpToDollar);
 
+  const [playersLoaded, setPlayersLoaded] = React.useState(0);
   const [slpToDollarLoaded, setSlpToDollarLoaded] = React.useState(0);
   const [playerInfoLoaded, setPlayerInfoLoaded] = React.useState(1);
   const [playerAxiesLoaded, setPlayerAxiesLoaded] = React.useState(1);
+  const [players, setPlayers] = React.useState([]);
   function IsContentLoaded() {
-    return slpToDollarLoaded;
+    return slpToDollarLoaded * playersLoaded;
   }
 
   React.useEffect(() => {
     UIStore.update((s) => {
       s.getPlayerInfo = GetPlayerInfo;
     });
-
-    /*fetch("/api", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
-      .then((response) => {
-        if (response.ok) {
-          return response.text();
-        } else {
-          throw new Error(response.status);
-        }
-      })
-      .then((data) => {
-        console.log(data);
-      })
-      .catch((error) => {
-        console.log(error);
-      });*/
 
     fetch("/api/getSlp", {
       method: "POST",
@@ -547,10 +803,60 @@ function Dashboard() {
       .catch((error) => {
         console.log(error);
       });
-  });
+  }, []);
+
+  React.useEffect(() => {
+    fetch("/api/getAllTrackedUsers", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    })
+      .then((response) => {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error(response.status);
+        }
+      })
+      .then((data) => {
+        console.log(data);
+        let d = data.status;
+        let final = [];
+        for (const i of d) {
+          final.push({
+            name: i.userName,
+            gameName: i.slp.name.split(' | '),
+            team: "N/A",
+            formation: "N/A",
+            slp: i.slp.in_game_slp,
+            slpDailyLimit: i.dailySlpLimit,
+            slpPerDay: NaN,
+            slpManager: i.slp.in_game_slp * i.userPercentage * 0.01,
+            slpManagerPerc: i.userPercentage,
+            nextClaim: fromUnixTime(i.slp.next_claim),
+            qualityTracker: 3,
+            telegram: "",
+            notifies: "",
+            ronin: i.userRoninAddr,
+            axies: {},
+            axieAvatar: "",
+            axiesLoaded: 0,
+          });
+        }
+        console.log("from server", final);
+        setPlayers(final);
+        setPlayersLoaded(1);
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  }, []);
 
   function GetPlayerInfo(inRonin, newPlayer) {
-    if (!axieTable[newPlayer].axiesLoaded) {
+    console.log("info", axieTable);
+    if (axieTable.length > 0 && axieTable[newPlayer] && !axieTable[newPlayer].axiesLoaded) {
       setPlayerInfoLoaded(0);
       setPlayerAxiesLoaded(0);
 
@@ -603,8 +909,17 @@ function Dashboard() {
           console.log(error);
         });
     } else {
+      setPlayerInfoLoaded(0);
+      setPlayerAxiesLoaded(0);
+      console.log("hello 2");
     }
   }
+
+  React.useEffect(() => {
+    UIStore.update((s) => {
+      s.axieTable = players;
+    });
+  }, [players]);
 
   return IsContentLoaded() ? (
     <>
@@ -627,7 +942,7 @@ function Dashboard() {
           </div>
           <p className="text-xl font-bold mt-4 text-center">Players online: {"0"}</p>
           <TilesComponent></TilesComponent>
-          <TableComponent content={axieTable}></TableComponent>
+          <TableComponent content={axieTable} getPlayerInfo={GetPlayerInfo}></TableComponent>
           <h2 className="mt-10 md:text-4xl text-2xl text-center font-bold">Add new player</h2>
           <TableControlComponent></TableControlComponent>
           <div className="my-10 h-0.5 md:w-11/12 w-full self-center border-blue-300" style={{ borderWidth: 1 }}></div>
@@ -645,12 +960,11 @@ function Dashboard() {
                     />
                   </div>
                   <h3 className="font-bold text-4xl mt-4">{selectedPlayer !== -1 ? axieTable[selectedPlayer].name : ""}</h3>
-                  <a
-                    href={"https://t.me/" + (selectedPlayer !== -1 ? axieTable[selectedPlayer].telegram.replace("@", "") : "")}
+                  {<p
                     className="font-light text-2xl text-purple-500 hover:text-purple-800"
                   >
-                    {<i className="fa fa-telegram" />}&nbsp;{selectedPlayer !== -1 ? axieTable[selectedPlayer].telegram.replace("@", "") : ""}
-                  </a>
+                    {selectedPlayer !== -1 ? axieTable[selectedPlayer].gameName[0] : ""}
+                  </p>}
                 </div>
                 <div className="w-full h-full flex flex-col">
                   <div className="w-full h-12 justify-center md:justify-start flex text-xl text-gray-600">

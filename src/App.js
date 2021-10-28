@@ -16,7 +16,7 @@ function App() {
             <Login />
           </PageHolder>
         </Route>
-        <Route path='/tracker'>
+        <Route path='/'>
           <PageHolder>
             <Dashboard />
           </PageHolder>
