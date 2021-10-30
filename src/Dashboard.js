@@ -2,7 +2,10 @@ import { Header, Content, Footer } from "./Base";
 import React from "react";
 import { UIStore } from "./UIStore";
 import { LoadingComponent } from "./LoadingComponent";
-import { formatRFC7231, add, fromUnixTime } from "date-fns";
+import { formatRFC7231, add, fromUnixTime, format, toDate, parseISO, differenceInDays, getDayOfYear, closestIndexTo } from "date-fns";
+import { Line, Bar } from "react-chartjs-2";
+
+const clamp = (a, min = 0, max = 1) => Math.min(max, Math.max(min, a));
 
 function TableCellComponent(props) {
   /*
@@ -29,19 +32,36 @@ function TableCellComponent(props) {
   */
 
   let axieTable = UIStore.useState((s) => s.axieTable);
-  let getPlayerInfo = UIStore.useState(s=>s.getPlayerInfo);
+  let getPlayerInfo = UIStore.useState((s) => s.getPlayerInfo);
 
   function RemoveFromTable() {
-    console.log(axieTable);
-    console.log(props.id);
+    fetch("/api/deleteTracker", {
+      method: "POST",
+      body: JSON.stringify({ ronin: axieTable[props.id - 1].ronin, userName: axieTable[props.id - 1].name }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+      .then((response) => {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error(response.status);
+        }
+      })
+      .then((data) => {
+        console.log(data);
+        UIStore.update((s) => {
+          s.selectedPlayer = -1;
+        });
 
-    UIStore.update((s) => {
-      s.selectedPlayer = -1;
-    });
-
-    UIStore.update((s) => {
-      s.axieTable.splice(props.id - 1, 1);
-    });
+        UIStore.update((s) => {
+          s.axieTable.splice(props.id - 1, 1);
+        });
+      })
+      .catch((error) => {
+        console.log(error);
+      });
   }
 
   return (
@@ -76,7 +96,7 @@ function TableCellComponent(props) {
         {/*props.content ? props.content.qualityTracker : "?"*/}
         <div
           className={
-            "w-4 h-4 ml-16 bg-" +
+            "w-4 h-4 ml-16 custom-bg-" +
             (props.content
               ? props.content.qualityTracker === 0
                 ? "green"
@@ -85,11 +105,10 @@ function TableCellComponent(props) {
                 : props.content.qualityTracker === 2
                 ? "red"
                 : "gray"
-              : "black") +
-            "-400"
+              : "black")
           }
         ></div>
-      </td>{" "}
+      </td>
       {/* Quality Tracker */}
       {/*<td>{props.content ? props.content.telegram : "?"}</td>  Telegram */}
       <td>
@@ -105,22 +124,42 @@ function TableCellComponent(props) {
 }
 
 function TilesComponent() {
+  let axieTable = UIStore.useState((s) => s.axieTable);
+  let slpToDollar = UIStore.useState((s) => s.slpToDollar);
+  let totalSLP = 0;
+  let totalManager = 0;
+  let totalSlpPerDay = 0;
+  let maxMMR = { p: "", s: 0 };
+
+  console.log("tiles", axieTable);
+
+  for (const i of axieTable) {
+    totalSLP += i.slp;
+    totalManager += i.slpManager;
+    totalSlpPerDay += i.slpPerDay;
+    if (i.mmr > maxMMR.s) {
+      maxMMR = { p: i.name, s: i.mmr };
+    }
+  }
+
   return (
     <div className="md:w-11/12 w-full mt-10 self-center grid grid-rows-4 grid-cols-2 md:grid-rows-2 md:grid-cols-4 gap-2">
       <div className="bg-gray-900 w-full h-40 md:h-56 rounded-lg flex flex-col p-4">
         <h5 className="w-full text-center md:text-xl text-yellow-500">Total Unclaimed</h5>
-        <h3 className="w-full text-center md:text-4xl text-2xl text-white mt-auto">{"0"} SLP</h3>
-        <h5 className="w-full text-center md:text-xl text-green-400 mt-auto">{"0.00"}$</h5>
+        <h3 className="w-full text-center md:text-4xl text-2xl text-white mt-auto">{totalSLP} SLP</h3>
+        <h5 className="w-full text-center md:text-xl text-green-400 mt-auto">{(totalSLP * slpToDollar).toFixed(2)}$</h5>
       </div>
       <div className="bg-gray-900 w-full h-40 md:h-56 rounded-lg flex flex-col p-4">
         <h5 className="w-full text-center md:text-xl text-yellow-500">Manager Unclaimed</h5>
-        <h3 className="w-full text-center md:text-4xl text-2xl text-white mt-auto">{"0"} SLP</h3>
-        <h5 className="w-full text-center md:text-xl text-green-400 mt-auto">{"0.00"}$</h5>
+        <h3 className="w-full text-center md:text-4xl text-2xl text-white mt-auto">{totalManager} SLP</h3>
+        <h5 className="w-full text-center md:text-xl text-green-400 mt-auto">{(totalManager * slpToDollar).toFixed(2)}$</h5>
       </div>
       <div className="bg-gray-900 w-full h-40 md:h-56 rounded-lg flex flex-col p-4">
         <h5 className="w-full text-center md:text-xl text-yellow-500">Average Daily SLP</h5>
-        <h3 className="w-full text-center md:text-4xl text-2xl text-white mt-auto">{"0"} SLP</h3>
-        <h5 className="w-full text-center md:text-xl text-green-400 mt-auto">{"0.00"}$</h5>
+        <h3 className="w-full text-center md:text-4xl text-2xl text-white mt-auto">{axieTable.length ? totalSlpPerDay / axieTable.length : 0} SLP</h3>
+        <h5 className="w-full text-center md:text-xl text-green-400 mt-auto">
+          {((axieTable.length ? totalSlpPerDay / axieTable.length : 0) * slpToDollar).toFixed(2)}$
+        </h5>
       </div>
       <div className="bg-gray-900 w-full h-40 md:h-56 rounded-lg flex flex-col p-4">
         <h5 className="w-full text-center md:text-xl text-yellow-500">Manager SLP Ready</h5>
@@ -129,11 +168,11 @@ function TilesComponent() {
       </div>
       <div className="bg-gray-900 w-full h-40 md:h-56 rounded-lg flex flex-col p-4 pb-10">
         <h5 className="w-full text-center md:text-xl text-yellow-500">Arena MVP</h5>
-        <h3 className="w-full text-center md:text-4xl text-2xl text-white my-auto">{"NAME"}</h3>
+        <h3 className="w-full text-center md:text-4xl text-2xl text-white my-auto">{maxMMR.p}</h3>
       </div>
       <div className="bg-gray-900 w-full h-40 md:h-56 rounded-lg flex flex-col p-4 pb-10">
         <h5 className="w-full text-center md:text-xl text-yellow-500">Claims ready</h5>
-        <h3 className="w-full text-center md:text-4xl text-2xl text-white my-auto">{"COUNT"}</h3>
+        <h3 className="w-full text-center md:text-4xl text-2xl text-white my-auto">{"0"}</h3>
       </div>
       <div className="bg-gray-900 w-full h-40 md:h-56 rounded-lg flex flex-col p-4">
         <h5 className="w-full text-center md:text-xl text-yellow-500">Claims in Next 24h</h5>
@@ -187,7 +226,7 @@ function TableComponent(props) {
         <TableCellComponent
           content={{
             name: i.name,
-            gameName: i.name.split(' | '),
+            gameName: i.name.split(" | "),
             team: i.team,
             formation: i.formation,
             slp: i.slp,
@@ -477,15 +516,17 @@ function TableControlComponent() {
         let i = data.status;
         addPlayer({
           name: name,
+          gameName: i.name.split(" | "),
           team: "N/A",
           formation: "N/A",
           slp: i.in_game_slp,
           slpDailyLimit: limit,
-          slpPerDay: NaN,
+          slpPerDay: 0,
           slpManager: i.in_game_slp * perc * 0.01,
           slpManagerPerc: perc,
           nextClaim: fromUnixTime(i.next_claim),
           qualityTracker: 3,
+          mmr: i.mmr,
           telegram: "",
           notifies: "",
           ronin: ronin,
@@ -560,7 +601,590 @@ function TableControlComponent() {
 }
 
 function PlayerCardContentProvider(props) {
-  //last stop here
+  const [fetchedAllInfoAboutPlayer, setFetchedAllInfoAboutPlayer] = React.useState(false);
+  const [allPlayerInfo, setAllPlayerInfo] = React.useState(undefined);
+  const [SLPData, setSLPData] = React.useState({
+    type: "today",
+    data: {
+      labels: [],
+      datasets: [
+        {
+          label: "SLP",
+          data: [],
+          fill: false,
+          backgroundColor: "rgb(40,144,146)",
+          borderColor: "rgba(40,144,146, 0.3)",
+        },
+      ],
+    },
+  });
+  const [SLPDataGraphType, setSLPDataGraphType] = React.useState(1);
+
+  const [MMRData, setMMRData] = React.useState({
+    type: "today",
+    data: {
+      labels: [],
+      datasets: [
+        {
+          label: "SLP",
+          data: [],
+          fill: false,
+          backgroundColor: "rgb(40,144,146)",
+          borderColor: "rgba(40,144,146, 0.3)",
+        },
+      ],
+    },
+  });
+  const [MMRDataGraphType, setMMRDataGraphType] = React.useState(1);
+
+  const [LIMITData, setLIMITData] = React.useState({
+    type: "today",
+    data: {
+      labels: [],
+      datasets: [
+        {
+          label: "%",
+          data: [],
+          fill: false,
+          backgroundColor: "rgb(40,144,146)",
+          borderColor: "rgba(52, 211, 153, 0.3)",
+        },
+      ],
+    },
+  });
+  const [LIMITDataGraphType, setLIMITDataGraphType] = React.useState(1);
+
+  let roninCache = UIStore.useState((s) => s.roninCache);
+
+  function ChangeSLPData(newType) {
+    if (props.data && allPlayerInfo) {
+      let fLabels = [];
+      let fData = [];
+      switch (newType) {
+        case "today":
+          setSLPData({
+            type: "today",
+            data: {
+              labels: [format(parseISO(allPlayerInfo[allPlayerInfo.length - 1].date), "MM/dd/yyyy")],
+              datasets: [
+                {
+                  label: "SLP per day",
+                  data: [allPlayerInfo[allPlayerInfo.length - 1].slpPerDay],
+                  fill: false,
+                  backgroundColor: "rgb(40,144,146)",
+                  borderColor: "rgba(40,144,146, 0.3)",
+                },
+              ],
+            },
+          });
+          break;
+
+        case "week":
+          fLabels = [];
+          fData = [];
+
+          for (let i = allPlayerInfo.length - 1; i >= (allPlayerInfo.length >= 7 ? allPlayerInfo.length - 7 : 0); i--) {
+            console.log("test days", allPlayerInfo[i]);
+            fLabels.push(format(parseISO(allPlayerInfo[i].date), "MM/dd/yyyy"));
+            fData.push(allPlayerInfo[i].slpPerDay);
+          }
+
+          setSLPData({
+            type: "week",
+            data: {
+              // labels: [format(parseISO(allPlayerInfo[allPlayerInfo.length - 1].date), 'MM/dd/yyyy')],
+              labels: fLabels.reverse(),
+              datasets: [
+                {
+                  label: "SLP per day",
+                  data: fData.reverse(),
+                  fill: false,
+                  backgroundColor: "rgb(40,144,146)",
+                  borderColor: "rgba(40,144,146, 0.3)",
+                },
+              ],
+            },
+          });
+          break;
+
+        case "month":
+          fLabels = [];
+          fData = [];
+
+          for (let i = allPlayerInfo.length - 1; i >= (allPlayerInfo.length >= 30 ? allPlayerInfo.length - 30 : 0); i--) {
+            console.log("test days", allPlayerInfo[i]);
+            fLabels.push(format(parseISO(allPlayerInfo[i].date), "MM/dd/yyyy"));
+            fData.push(allPlayerInfo[i].slpPerDay);
+          }
+
+          setSLPData({
+            type: "month",
+            data: {
+              // labels: [format(parseISO(allPlayerInfo[allPlayerInfo.length - 1].date), 'MM/dd/yyyy')],
+              labels: fLabels.reverse(),
+              datasets: [
+                {
+                  label: "SLP per day",
+                  data: fData.reverse(),
+                  fill: false,
+                  backgroundColor: "rgb(40,144,146)",
+                  borderColor: "rgba(40,144,146, 0.3)",
+                },
+              ],
+            },
+          });
+          break;
+
+        case "all":
+          fLabels = [];
+          fData = [];
+
+          for (let i = allPlayerInfo.length - 1; i >= (allPlayerInfo.length >= (360*3) ? allPlayerInfo.length - (360*3) : 0); i--) {
+            console.log("test days", allPlayerInfo[i]);
+            fLabels.push(format(parseISO(allPlayerInfo[i].date), "MM/dd/yyyy"));
+            fData.push(allPlayerInfo[i].slpPerDay);
+          }
+
+          setSLPData({
+            type: "all",
+            data: {
+              // labels: [format(parseISO(allPlayerInfo[allPlayerInfo.length - 1].date), 'MM/dd/yyyy')],
+              labels: fLabels.reverse(),
+              datasets: [
+                {
+                  label: "SLP per day",
+                  data: fData.reverse(),
+                  fill: false,
+                  backgroundColor: "rgb(40,144,146)",
+                  borderColor: "rgba(40,144,146, 0.3)",
+                },
+              ],
+            },
+          });
+          break;
+
+        case 'custom':
+          fData = [];
+          fLabels = [];
+          let slpInpFrom = document.getElementById('inp-slp-from');
+          let slpInpTo = document.getElementById('inp-slp-to');
+          if(slpInpFrom && slpInpTo)
+          {
+            let slpCustomTimeFrom = parseISO(slpInpFrom.value);
+            let slpCustomTimeTo = parseISO(slpInpTo.value);
+            if(!isNaN(slpCustomTimeFrom) && !isNaN(slpCustomTimeTo))
+            {
+              let allDates = [];
+              for (const i of allPlayerInfo) {
+                allDates.push(parseISO(i.date));
+              }
+
+              let start = closestIndexTo(slpCustomTimeFrom, allDates);
+              let stop = closestIndexTo(slpCustomTimeTo, allDates);
+
+              for (let i = start; i <= stop; i++) {
+                fLabels.push(format(parseISO(allPlayerInfo[i].date), "MM/dd/yyyy"));
+                fData.push(allPlayerInfo[i].slpPerDay);
+              }
+    
+              setSLPData({
+                type: "custom",
+                data: {
+                  // labels: [format(parseISO(allPlayerInfo[allPlayerInfo.length - 1].date), 'MM/dd/yyyy')],
+                  labels: fLabels,
+                  datasets: [
+                    {
+                      label: "SLP per day",
+                      data: fData,
+                      fill: false,
+                      backgroundColor: "rgb(40,144,146)",
+                      borderColor: "rgba(40,144,146, 0.3)",
+                    },
+                  ],
+                },
+              });
+
+            }
+          }
+          break;
+
+        default:
+          break;
+      }
+    }
+  }
+
+  function FirstSetSLPData(data) {
+    setSLPData({
+      type: "today",
+      data: {
+        labels: [format(parseISO(data.date), "MM/dd/yyyy")],
+        datasets: [
+          {
+            label: "SLP per day",
+            data: [data.slpPerDay],
+            fill: false,
+            backgroundColor: "rgb(40,144,146)",
+            borderColor: "rgba(40,144,146, 0.3)",
+          },
+        ],
+      },
+    });
+  }
+
+  function ChangeMMRData(newType) {
+    if (props.data && allPlayerInfo) {
+      let fLabels = [];
+      let fData = [];
+      switch (newType) {
+        case "today":
+          setMMRData({
+            type: "today",
+            data: {
+              labels: [format(parseISO(allPlayerInfo[allPlayerInfo.length - 1].date), "MM/dd/yyyy")],
+              datasets: [
+                {
+                  label: "MMR",
+                  data: [allPlayerInfo[allPlayerInfo.length - 1].mmrPerDay],
+                  fill: false,
+                  backgroundColor: "rgb(255, 99, 132)",
+                  borderColor: "rgba(255, 99, 132, 0.2)",
+                },
+              ],
+            },
+          });
+          break;
+
+        case "week":
+          fLabels = [];
+          fData = [];
+
+          for (let i = allPlayerInfo.length - 1; i >= (allPlayerInfo.length >= 7 ? allPlayerInfo.length - 7 : 0); i--) {
+            console.log("test days", allPlayerInfo[i]);
+            fLabels.push(format(parseISO(allPlayerInfo[i].date), "MM/dd/yyyy"));
+            fData.push(allPlayerInfo[i].mmrPerDay);
+          }
+
+          setMMRData({
+            type: "week",
+            data: {
+              // labels: [format(parseISO(allPlayerInfo[allPlayerInfo.length - 1].date), 'MM/dd/yyyy')],
+              labels: fLabels.reverse(),
+              datasets: [
+                {
+                  label: "MMR",
+                  data: fData.reverse(),
+                  fill: false,
+                  backgroundColor: "rgb(255, 99, 132)",
+                  borderColor: "rgba(255, 99, 132, 0.2)",
+                },
+              ],
+            },
+          });
+          break;
+
+        case "month":
+          fLabels = [];
+          fData = [];
+
+          for (let i = allPlayerInfo.length - 1; i >= (allPlayerInfo.length >= 30 ? allPlayerInfo.length - 30 : 0); i--) {
+            console.log("test days", allPlayerInfo[i]);
+            fLabels.push(format(parseISO(allPlayerInfo[i].date), "MM/dd/yyyy"));
+            fData.push(allPlayerInfo[i].mmrPerDay);
+          }
+
+          setMMRData({
+            type: "month",
+            data: {
+              // labels: [format(parseISO(allPlayerInfo[allPlayerInfo.length - 1].date), 'MM/dd/yyyy')],
+              labels: fLabels.reverse(),
+              datasets: [
+                {
+                  label: "MMR",
+                  data: fData.reverse(),
+                  fill: false,
+                  backgroundColor: "rgb(255, 99, 132)",
+                  borderColor: "rgba(255, 99, 132, 0.2)",
+                },
+              ],
+            },
+          });
+          break;
+
+        case "all":
+          fLabels = [];
+          fData = [];
+
+          for (let i = allPlayerInfo.length - 1; i >= (allPlayerInfo.length >= (360*3) ? allPlayerInfo.length - (360*3) : 0); i--) {
+            console.log("test days", allPlayerInfo[i]);
+            fLabels.push(format(parseISO(allPlayerInfo[i].date), "MM/dd/yyyy"));
+            fData.push(allPlayerInfo[i].mmrPerDay);
+          }
+
+          setMMRData({
+            type: "all",
+            data: {
+              // labels: [format(parseISO(allPlayerInfo[allPlayerInfo.length - 1].date), 'MM/dd/yyyy')],
+              labels: fLabels.reverse(),
+              datasets: [
+                {
+                  label: "MMR",
+                  data: fData.reverse(),
+                  fill: false,
+                  backgroundColor: "rgb(255, 99, 132)",
+                  borderColor: "rgba(255, 99, 132, 0.2)",
+                },
+              ],
+            },
+          });
+          break;
+
+        case 'custom':
+          fData = [];
+          fLabels = [];
+          let slpInpFrom = document.getElementById('inp-mmr-from');
+          let slpInpTo = document.getElementById('inp-mmr-to');
+          if(slpInpFrom && slpInpTo)
+          {
+            let slpCustomTimeFrom = parseISO(slpInpFrom.value);
+            let slpCustomTimeTo = parseISO(slpInpTo.value);
+            if(!isNaN(slpCustomTimeFrom) && !isNaN(slpCustomTimeTo))
+            {
+              let allDates = [];
+              for (const i of allPlayerInfo) {
+                allDates.push(parseISO(i.date));
+              }
+
+              let start = closestIndexTo(slpCustomTimeFrom, allDates);
+              let stop = closestIndexTo(slpCustomTimeTo, allDates);
+
+              for (let i = start; i <= stop; i++) {
+                fLabels.push(format(parseISO(allPlayerInfo[i].date), "MM/dd/yyyy"));
+                fData.push(allPlayerInfo[i].mmrPerDay);
+              }
+    
+              setMMRData({
+                type: "custom",
+                data: {
+                  // labels: [format(parseISO(allPlayerInfo[allPlayerInfo.length - 1].date), 'MM/dd/yyyy')],
+                  labels: fLabels,
+                  datasets: [
+                    {
+                      label: "MMR",
+                      data: fData,
+                      fill: false,
+                      backgroundColor: "rgb(255, 99, 132)",
+                      borderColor: "rgba(255, 99, 132, 0.2)",
+                    },
+                  ],
+                },
+              });
+
+            }
+          }
+          break;
+
+        default:
+          break;
+      }
+    }
+  }
+
+  function FirstSetMMRData(data) {
+    setMMRData({
+      type: "today",
+      data: {
+        labels: [format(parseISO(data.date), "MM/dd/yyyy")],
+        datasets: [
+          {
+            label: "MMR",
+            data: [data.mmrPerDay],
+            fill: false,
+            backgroundColor: "rgb(255, 99, 132)",
+            borderColor: "rgba(52, 211, 153, 0.3)",
+          },
+        ],
+      },
+    });
+  }
+
+  function ChangeLIMITData(newType) {
+    if (props.data && allPlayerInfo) {
+      let fLabels = [];
+      let fData = [];
+      switch (newType) {
+        case "today":
+          setLIMITData({
+            type: "today",
+            data: {
+              labels: [format(parseISO(allPlayerInfo[allPlayerInfo.length - 1].date), "MM/dd/yyyy")],
+              datasets: [
+                {
+                  label: "%",
+                  data: [((allPlayerInfo[allPlayerInfo.length - 1].slpPerDay / allPlayerInfo[allPlayerInfo.length - 1].dailySlpLimit) * 100).toFixed(1) ],
+                  fill: false,
+                  backgroundColor: "rgb(52, 211, 153)",
+                  borderColor: "rgba(52, 211, 153, 0.3)",
+                },
+              ],
+            },
+          });
+          break;
+
+        case "week":
+          fLabels = [];
+          fData = [];
+
+          for (let i = allPlayerInfo.length - 1; i >= (allPlayerInfo.length >= 7 ? allPlayerInfo.length - 7 : 0); i--) {
+            console.log("test days", allPlayerInfo[i]);
+            fLabels.push(format(parseISO(allPlayerInfo[i].date), "MM/dd/yyyy"));
+            fData.push(((allPlayerInfo[i].slpPerDay / allPlayerInfo[i].dailySlpLimit) * 100).toFixed(1) );
+          }
+
+          setLIMITData({
+            type: "week",
+            data: {
+              // labels: [format(parseISO(allPlayerInfo[allPlayerInfo.length - 1].date), 'MM/dd/yyyy')],
+              labels: fLabels.reverse(),
+              datasets: [
+                {
+                  label: "%",
+                  data: fData.reverse(),
+                  fill: false,
+                  backgroundColor: "rgb(52, 211, 153)",
+                  borderColor: "rgba(52, 211, 153, 0.3)",
+                },
+              ],
+            },
+          });
+          break;
+
+        case "month":
+          fLabels = [];
+          fData = [];
+
+          for (let i = allPlayerInfo.length - 1; i >= (allPlayerInfo.length >= 30 ? allPlayerInfo.length - 30 : 0); i--) {
+            console.log("test days", allPlayerInfo[i]);
+            fLabels.push(format(parseISO(allPlayerInfo[i].date), "MM/dd/yyyy"));
+            fData.push(((allPlayerInfo[i].slpPerDay / allPlayerInfo[i].dailySlpLimit) * 100).toFixed(1) );
+          }
+
+          setLIMITData({
+            type: "month",
+            data: {
+              // labels: [format(parseISO(allPlayerInfo[allPlayerInfo.length - 1].date), 'MM/dd/yyyy')],
+              labels: fLabels.reverse(),
+              datasets: [
+                {
+                  label: "%",
+                  data: fData.reverse(),
+                  fill: false,
+                  backgroundColor: "rgb(52, 211, 153)",
+                  borderColor: "rgba(52, 211, 153, 0.3)",
+                },
+              ],
+            },
+          });
+          break;
+
+        case "all":
+          fLabels = [];
+          fData = [];
+
+          for (let i = allPlayerInfo.length - 1; i >= (allPlayerInfo.length >= (360*3) ? allPlayerInfo.length - (360*3) : 0); i--) {
+            console.log("test days", allPlayerInfo[i]);
+            fLabels.push(format(parseISO(allPlayerInfo[i].date), "MM/dd/yyyy"));
+            fData.push(((allPlayerInfo[i].slpPerDay / allPlayerInfo[i].dailySlpLimit) * 100).toFixed(1) );
+          }
+
+          setLIMITData({
+            type: "all",
+            data: {
+              // labels: [format(parseISO(allPlayerInfo[allPlayerInfo.length - 1].date), 'MM/dd/yyyy')],
+              labels: fLabels.reverse(),
+              datasets: [
+                {
+                  label: "%",
+                  data: fData.reverse(),
+                  fill: false,
+                  backgroundColor: "rgb(52, 211, 153)",
+                  borderColor: "rgba(52, 211, 153, 0.3)",
+                },
+              ],
+            },
+          });
+          break;
+
+        case 'custom':
+          fData = [];
+          fLabels = [];
+          let slpInpFrom = document.getElementById('inp-limit-from');
+          let slpInpTo = document.getElementById('inp-limit-to');
+          if(slpInpFrom && slpInpTo)
+          {
+            let slpCustomTimeFrom = parseISO(slpInpFrom.value);
+            let slpCustomTimeTo = parseISO(slpInpTo.value);
+            if(!isNaN(slpCustomTimeFrom) && !isNaN(slpCustomTimeTo))
+            {
+              let allDates = [];
+              for (const i of allPlayerInfo) {
+                allDates.push(parseISO(i.date));
+              }
+
+              let start = closestIndexTo(slpCustomTimeFrom, allDates);
+              let stop = closestIndexTo(slpCustomTimeTo, allDates);
+
+              for (let i = start; i <= stop; i++) {
+                fLabels.push(format(parseISO(allPlayerInfo[i].date), "MM/dd/yyyy"));
+                fData.push(((allPlayerInfo[i].slpPerDay / allPlayerInfo[i].dailySlpLimit) * 100).toFixed(1) );
+              }
+    
+              setLIMITData({
+                type: "custom",
+                data: {
+                  // labels: [format(parseISO(allPlayerInfo[allPlayerInfo.length - 1].date), 'MM/dd/yyyy')],
+                  labels: fLabels,
+                  datasets: [
+                    {
+                      label: "%",
+                      data: fData,
+                      fill: false,
+                      backgroundColor: "rgb(52, 211, 153)",
+                      borderColor: "rgba(52, 211, 153, 0.3)",
+                    },
+                  ],
+                },
+              });
+
+            }
+          }
+          break;
+
+        default:
+          break;
+      }
+    }
+  }
+
+  function FirstSetLIMITData(data) {
+    console.log('object,,',((data.slpPerDay / data.dailySlpLimit) * 100).toFixed(1));
+    setLIMITData({
+      type: "today",
+      data: {
+        labels: [format(parseISO(data.date), "MM/dd/yyyy")],
+        datasets: [
+          {
+            label: "%",
+            data: [((data.slpPerDay / data.dailySlpLimit) * 100).toFixed(1)],
+            fill: false,
+            backgroundColor: "rgb(52, 211, 153)",
+            borderColor: "rgba(52, 211, 153, 0.3)",
+          },
+        ],
+      },
+    });
+  }
+
   if (props.data) {
     switch (props.id) {
       case 0:
@@ -749,7 +1373,273 @@ function PlayerCardContentProvider(props) {
           </>
         );
       case 1:
-        return <div>Analytics</div>;
+        if (!roninCache[props.data.ronin]) {
+          fetch("/api/getAllUserInfo", {
+            method: "POST",
+            body: JSON.stringify({ ronin: props.data.ronin }),
+            headers: {
+              "Content-Type": "application/json",
+            },
+          })
+            .then((response) => {
+              if (response.ok) {
+                return response.json();
+              } else {
+                throw new Error(response.status);
+              }
+            })
+            .then((data) => {
+              if (data.status) {
+                UIStore.update((s) => {
+                  s.roninCache[props.data.ronin] = { fetched: true, data: data.status };
+                });
+                setFetchedAllInfoAboutPlayer(true);
+                setAllPlayerInfo(data.status);
+                FirstSetSLPData(data.status[data.status.length - 1]);
+                FirstSetMMRData(data.status[data.status.length - 1]);
+                FirstSetLIMITData(data.status[data.status.length - 1]);
+              }
+            })
+            .catch((error) => {
+              console.log(error);
+            });
+        }
+
+        return fetchedAllInfoAboutPlayer && allPlayerInfo ? (
+          <div className="flex flex-wrap justify-center mt-4">
+            <h3 className="text-4xl font-bold my-4">SLP Gained</h3>
+            <div className="w-full h-auto flex justify-between">
+              <button
+                onClick={() => {
+                  ChangeSLPData("today");
+                }}
+                className="w-full h-10 p-1 font-bold border-b-2 transition-all duration-150 border-purple-300 hover:border-purple-800 hover:bg-purple-200"
+              >
+                Today
+              </button>
+              <button
+                onClick={() => {
+                  ChangeSLPData("week");
+                }}
+                className="w-full h-10 p-1 font-bold border-b-2 transition-all duration-150 border-purple-300 hover:border-purple-800 hover:bg-purple-200"
+              >
+                Last week
+              </button>
+              <button
+                onClick={() => {
+                  ChangeSLPData("month");
+                }}
+                className="w-full min-w-max h-10 p-1 font-bold border-b-2 transition-all duration-150 border-purple-300 hover:border-purple-800 hover:bg-purple-200"
+              >
+                Last month
+              </button>
+              <button
+                onClick={() => {
+                  ChangeSLPData("all");
+                }}
+                className="w-full h-10 p-1 font-bold border-b-2 transition-all duration-150 border-purple-300 hover:border-purple-800 hover:bg-purple-200"
+              >
+                All time
+              </button>
+            </div>
+            <div className="w-full h-auto flex flex-col my-2 font-bold px-2">
+              From
+              <input onChange={()=>{ChangeSLPData('custom');}} className="border-2 rounded-lg border-purple-300 hover:border-purple-800" type="date" name="" id="inp-slp-from" />
+              To
+              <input onChange={()=>{ChangeSLPData('custom');}} className="border-2 rounded-lg border-purple-300 hover:border-purple-800" type="date" name="" id="inp-slp-to" />
+            </div>
+            {SLPDataGraphType ? (
+              <Bar
+                data={SLPData.data}
+                options={{
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                    },
+                  },
+                }}
+              />
+            ) : (
+              <Line
+                data={SLPData.data}
+                options={{
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                    },
+                  },
+                }}
+              />
+            )}
+            <div className='w-full flex text-center items-center font-bold text-purple-800'>
+            Line graph
+              <label className="switch mx-4">
+                <input onClick={()=>{
+                  setSLPDataGraphType(!SLPDataGraphType);
+                }} type="checkbox" />
+                <span className="slider round"></span>
+              </label>
+            </div>
+
+            {/* next graph */}
+
+
+            <h3 className="text-4xl font-bold my-4 mt-16">MMR</h3>
+            <div className="w-full h-auto flex justify-between">
+              <button
+                onClick={() => {
+                  ChangeMMRData("today");
+                }}
+                className="w-full h-10 p-1 font-bold border-b-2 transition-all duration-150 border-purple-300 hover:border-purple-800 hover:bg-purple-200"
+              >
+                Today
+              </button>
+              <button
+                onClick={() => {
+                  ChangeMMRData("week");
+                }}
+                className="w-full h-10 p-1 font-bold border-b-2 transition-all duration-150 border-purple-300 hover:border-purple-800 hover:bg-purple-200"
+              >
+                Last week
+              </button>
+              <button
+                onClick={() => {
+                  ChangeMMRData("month");
+                }}
+                className="w-full min-w-max h-10 p-1 font-bold border-b-2 transition-all duration-150 border-purple-300 hover:border-purple-800 hover:bg-purple-200"
+              >
+                Last month
+              </button>
+              <button
+                onClick={() => {
+                  ChangeMMRData("all");
+                }}
+                className="w-full h-10 p-1 font-bold border-b-2 transition-all duration-150 border-purple-300 hover:border-purple-800 hover:bg-purple-200"
+              >
+                All time
+              </button>
+            </div>
+            <div className="w-full h-auto flex flex-col my-2 font-bold px-2">
+              From
+              <input onChange={()=>{ChangeMMRData('custom');}} className="border-2 rounded-lg border-purple-300 hover:border-purple-800" type="date" name="" id="inp-mmr-from" />
+              To
+              <input onChange={()=>{ChangeMMRData('custom');}} className="border-2 rounded-lg border-purple-300 hover:border-purple-800" type="date" name="" id="inp-mmr-to" />
+            </div>
+            {MMRDataGraphType ? (
+              <Bar
+                data={MMRData.data}
+                options={{
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                    },
+                  },
+                }}
+              />
+            ) : (
+              <Line
+                data={MMRData.data}
+                options={{
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                    },
+                  },
+                }}
+              />
+            )}
+            <div className='w-full flex text-center items-center font-bold text-purple-800'>
+            Line graph
+              <label className="switch mx-4">
+                <input onClick={()=>{
+                  setMMRDataGraphType(!MMRDataGraphType);
+                }} type="checkbox" />
+                <span className="slider round"></span>
+              </label>
+            </div>
+
+
+
+            {/* next graph */}
+
+
+            <h3 className="text-4xl font-bold my-4 mt-16 text-center">Daily SLP Limit completed, %</h3>
+            <div className="w-full h-auto flex justify-between">
+              <button
+                onClick={() => {
+                  ChangeLIMITData("today");
+                }}
+                className="w-full h-10 p-1 font-bold border-b-2 transition-all duration-150 border-purple-300 hover:border-purple-800 hover:bg-purple-200"
+              >
+                Today
+              </button>
+              <button
+                onClick={() => {
+                  ChangeLIMITData("week");
+                }}
+                className="w-full h-10 p-1 font-bold border-b-2 transition-all duration-150 border-purple-300 hover:border-purple-800 hover:bg-purple-200"
+              >
+                Last week
+              </button>
+              <button
+                onClick={() => {
+                  ChangeLIMITData("month");
+                }}
+                className="w-full min-w-max h-10 p-1 font-bold border-b-2 transition-all duration-150 border-purple-300 hover:border-purple-800 hover:bg-purple-200"
+              >
+                Last month
+              </button>
+              <button
+                onClick={() => {
+                  ChangeLIMITData("all");
+                }}
+                className="w-full h-10 p-1 font-bold border-b-2 transition-all duration-150 border-purple-300 hover:border-purple-800 hover:bg-purple-200"
+              >
+                All time
+              </button>
+            </div>
+            <div className="w-full h-auto flex flex-col my-2 font-bold px-2">
+              From
+              <input onChange={()=>{ChangeLIMITData('custom');}} className="border-2 rounded-lg border-purple-300 hover:border-purple-800" type="date" name="" id="inp-limit-from" />
+              To
+              <input onChange={()=>{ChangeLIMITData('custom');}} className="border-2 rounded-lg border-purple-300 hover:border-purple-800" type="date" name="" id="inp-limit-to" />
+            </div>
+            {LIMITDataGraphType ? (
+              <Bar
+                data={LIMITData.data}
+                options={{
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                    },
+                  },
+                }}
+              />
+            ) : (
+              <Line
+                data={LIMITData.data}
+                options={{
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                    },
+                  },
+                }}
+              />
+            )}
+            <div className='w-full flex text-center items-center font-bold text-purple-800'>
+            Line graph
+              <label className="switch mx-4">
+                <input onClick={()=>{
+                  setLIMITDataGraphType(!LIMITDataGraphType);
+                }} type="checkbox" />
+                <span className="slider round"></span>
+              </label>
+            </div>
+          </div>
+        ) : (
+          <LoadingComponent styles="max-h-20 mt-4" />
+        );
       case 2:
         return <div className="text-xl py-5">Notifications are not available for now.</div>;
       default:
@@ -821,33 +1711,39 @@ function Dashboard() {
         }
       })
       .then((data) => {
-        console.log(data);
-        let d = data.status;
-        let final = [];
-        for (const i of d) {
-          final.push({
-            name: i.userName,
-            gameName: i.slp.name.split(' | '),
-            team: "N/A",
-            formation: "N/A",
-            slp: i.slp.in_game_slp,
-            slpDailyLimit: i.dailySlpLimit,
-            slpPerDay: NaN,
-            slpManager: i.slp.in_game_slp * i.userPercentage * 0.01,
-            slpManagerPerc: i.userPercentage,
-            nextClaim: fromUnixTime(i.slp.next_claim),
-            qualityTracker: 3,
-            telegram: "",
-            notifies: "",
-            ronin: i.userRoninAddr,
-            axies: {},
-            axieAvatar: "",
-            axiesLoaded: 0,
-          });
+        if (data.status !== "no tracker exist") {
+          console.log(data);
+          let d = data.status;
+          let final = [];
+          for (const i of d) {
+            final.push({
+              name: i.userName,
+              gameName: i.slp.name.split(" | "),
+              team: "N/A",
+              formation: "N/A",
+              slp: i.slp.in_game_slp,
+              slpDailyLimit: i.dailySlpLimit,
+              slpPerDay: i.slpPerDay,
+              slpManager: i.slp.in_game_slp * i.userPercentage * 0.01,
+              slpManagerPerc: i.userPercentage,
+              nextClaim: fromUnixTime(i.slp.next_claim),
+              qualityTracker: 3,
+              mmr: i.slp.mmr,
+              telegram: "",
+              notifies: "",
+              ronin: i.userRoninAddr,
+              axies: {},
+              axieAvatar: "",
+              axiesLoaded: 0,
+            });
+          }
+          console.log("from server", final);
+          setPlayers(final);
+          setPlayersLoaded(1);
+        } else {
+          setPlayers([]);
+          setPlayersLoaded(1);
         }
-        console.log("from server", final);
-        setPlayers(final);
-        setPlayersLoaded(1);
       })
       .catch((error) => {
         console.log(error);
@@ -960,11 +1856,11 @@ function Dashboard() {
                     />
                   </div>
                   <h3 className="font-bold text-4xl mt-4">{selectedPlayer !== -1 ? axieTable[selectedPlayer].name : ""}</h3>
-                  {<p
-                    className="font-light text-2xl text-purple-500 hover:text-purple-800"
-                  >
-                    {selectedPlayer !== -1 ? axieTable[selectedPlayer].gameName[0] : ""}
-                  </p>}
+                  {
+                    <p className="font-light text-2xl text-purple-500 hover:text-purple-800">
+                      {selectedPlayer !== -1 ? axieTable[selectedPlayer].gameName[0] : ""}
+                    </p>
+                  }
                 </div>
                 <div className="w-full h-full flex flex-col">
                   <div className="w-full h-12 justify-center md:justify-start flex text-xl text-gray-600">
@@ -988,7 +1884,7 @@ function Dashboard() {
                       }}
                       className={"p-2 font-bold transition-all duration-150 border-b-2 " + (selectedButton === 1 ? "selected-button" : "non-selected-button")}
                     >
-                      &nbsp;&nbsp;Analytics&nbsp;&nbsp;
+                      &nbsp;&nbsp;Tracking&nbsp;&nbsp;
                     </button>
                     <button
                       onClick={() => {

@@ -112,6 +112,7 @@ export const UIStore = new Store({
   //   axiesLoaded: 0,
   // }],
   axieTable: [],
+  roninCache: {},
   selectedPlayer: -1,
   selectedButton: 0,
   slpToDollar: '0.00000',
