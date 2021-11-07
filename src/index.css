@@ -89,6 +89,11 @@ html{
   background-color: rgb(156, 163, 175);
 }
 
+.custom-bg-black
+{
+  background-color: rgb(0, 0, 0);
+}
+
 /* The switch - the box around the slider */
 .switch {
   position: relative;

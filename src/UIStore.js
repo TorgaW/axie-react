@@ -20,7 +20,7 @@ Axie table scheme:
 
 */
 
-export const UIStore = new Store({
+const UIStore = new Store({
   // axieTable: [  {
   //   name: 'Einstein',
   //   team: 'team_1',
@@ -118,3 +118,12 @@ export const UIStore = new Store({
   slpToDollar: '0.00000',
   getPlayerInfo: ()=>{},
 });
+
+const AnalyticsStore = new Store({
+
+  usersTable: {},
+  uniqueRonins: [],
+
+});
+
+export { UIStore, AnalyticsStore };

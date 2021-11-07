@@ -64,8 +64,51 @@ function TableCellComponent(props) {
       });
   }
 
+  function HandleUploadImage(e)
+  {
+    let file = e.target.files[0];
+    if(!file){return;}
+    let a = file.name.split(".");
+    let size = (file.size / 1024) / 1024;
+    if (size > 1.5) {
+      alert(`Maximum size is 1.5 MB!`);
+      return;
+    } else {
+      let t = document.getElementById('quest-name');
+      console.log(props);
+      Object.defineProperty(file, "name", {
+        writable: true,
+        value: props.content.ronin + "." + a[a.length - 1],
+      });
+    }
+    let form = new FormData();
+    form.append('file', file, file.name);
+
+    fetch("/api/changeAvatar", {
+      method: "POST",
+      body: form
+    })
+      .then((response) => {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error(response.statusText);
+        }
+      })
+      .then((data) => {
+
+        console.log(data);
+
+      })
+      .catch((error) => {
+        console.log(error)
+      });
+
+  }
+
   return (
     <tr className="h-20 border-4 border-blue-300">
+      <input onChange={HandleUploadImage} id={'ava-inp-'+props.order} className='hidden' type="file" />
       <td className="font-bold">{props.order ?? "?"}</td> {/* # */}
       <td
         onClick={() => {
@@ -82,7 +125,11 @@ function TableCellComponent(props) {
       </td>{" "}
       {/* player name */}
       <td className="flex justify-center pt-2">
-        <img width="50" height="50" className="rounded-full border-2 border-purple-800" src={"axie-avatar.jpg"} alt="" /> {/* Avatar */}
+        <img onClick={()=>{
+
+          document.getElementById('ava-inp-'+props.order).click();
+
+        }} width="50" height="50" className="rounded-full border-2 border-purple-800 cursor-pointer" src={"placeholder-avatar.png"} alt="" /> {/* Avatar */}
       </td>
       <td>{props.content ? props.content.team : ""}</td> {/* Team */}
       <td>{props.content ? props.content.formation : "?"}</td> {/* Axie formation */}
@@ -221,6 +268,7 @@ function TableComponent(props) {
   let counter = 1;
 
   function FillTableCells() {
+    console.log('cellss', copyPropsContent);
     for (const i of copyPropsContent) {
       tableCells.push(
         <TableCellComponent
@@ -236,6 +284,8 @@ function TableComponent(props) {
             slpManagerPerc: i.slpManagerPerc,
             nextClaim: i.nextClaim,
             qualityTracker: i.qualityTracker,
+            avatar: i.axieAvatar,
+            ronin: i.ronin,
           }}
           order={counter}
           id={counter}
@@ -478,7 +528,7 @@ function TableControlComponent() {
     let fields = document.querySelectorAll('[id$="-inp"]');
     console.log(fields);
 
-    if (fields && fields.length < 4) {
+    if (fields && fields.length < 6) {
       return;
     }
 
@@ -486,8 +536,12 @@ function TableControlComponent() {
     let ronin = fields[1].value;
     let perc = fields[2].value;
     let limit = fields[3].value;
+    let team = fields[4].value;
+    let formation = fields[5].value;
 
-    if (name.trim().length < 1 && ronin.trim().length < 1 && perc.trim().length < 1 && limit.trim().length < 1) {
+    console.log();
+
+    if (name.trim().length < 1 || ronin.trim().length !== 46 || perc.trim().length < 1 || limit.trim().length < 1 || !ronin.split(':')[1] || !(/^\d+$/.test(perc)) || !(/^\d+$/.test(limit))) {
       return;
     }
 
@@ -499,7 +553,7 @@ function TableControlComponent() {
 
     fetch("/api/addTracker", {
       method: "POST",
-      body: JSON.stringify({ name: name, ronin: ronin, percentage: perc, limit: limit }),
+      body: JSON.stringify({ name: name, ronin: ronin.split(':')[1], percentage: perc, limit: limit }),
       headers: {
         "Content-Type": "application/json",
       },
@@ -529,9 +583,9 @@ function TableControlComponent() {
           mmr: i.mmr,
           telegram: "",
           notifies: "",
-          ronin: ronin,
+          ronin: ronin.split(':')[1],
           axies: {},
-          axieAvatar: "",
+          axieAvatar: i.avatar ?? 'placeholder-avatar.png',
           axiesLoaded: 0,
         });
       })
@@ -544,9 +598,9 @@ function TableControlComponent() {
 
   return (
     <>
-      <div className="md:w-11/12 w-full mt-10 self-center flex flex-col lg:grid lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 lg:gap-2">
+      <div className="md:w-11/12 w-full mt-10 self-center flex flex-col">
         <div className="flex items-center h-10 w-full">
-          <label htmlFor="name-inp" className="pr-2 text-left font-bold text-lg lg:w-auto w-40">
+          <label htmlFor="name-inp" className="pr-2 text-left font-bold text-lg w-40">
             Name:
           </label>
           <input
@@ -557,7 +611,7 @@ function TableControlComponent() {
           />
         </div>
         <div className="flex items-center h-10 mt-1">
-          <label htmlFor="ronin-inp" className="pr-2 text-left font-bold text-lg lg:w-auto w-40">
+          <label htmlFor="ronin-inp" className="pr-2 text-left font-bold text-lg w-40">
             Ronin:
           </label>
           <input
@@ -568,7 +622,7 @@ function TableControlComponent() {
           />
         </div>
         <div className="flex items-center h-10 mt-1">
-          <label htmlFor="managerperc-inp" className="pr-2 text-left font-bold text-lg lg:w-auto w-40">
+          <label htmlFor="managerperc-inp" className="pr-2 text-left font-bold text-lg w-40">
             Manager %:
           </label>
           <input
@@ -585,6 +639,28 @@ function TableControlComponent() {
           <input
             id="slp-limit-inp"
             placeholder="100"
+            type="text"
+            className="border-2 h-full min-w-0 rounded-lg px-2 border-blue-300 transition-all duration-150 hover:border-blue-600 focus:border-purple-900 outline-none"
+          />
+        </div>
+        <div className="flex items-center h-10 mt-1">
+          <label htmlFor="slp-limit-inp" className="pr-2 text-left font-bold text-lg w-40">
+            Team:
+          </label>
+          <input
+            id="team-inp"
+            placeholder="Team name"
+            type="text"
+            className="border-2 h-full min-w-0 rounded-lg px-2 border-blue-300 transition-all duration-150 hover:border-blue-600 focus:border-purple-900 outline-none"
+          />
+        </div>
+        <div className="flex items-center h-10 mt-1">
+          <label htmlFor="slp-limit-inp" className="pr-2 text-left font-bold text-lg w-40">
+            Formation:
+          </label>
+          <input
+            id="formation-inp"
+            placeholder="Formation name"
             type="text"
             className="border-2 h-full min-w-0 rounded-lg px-2 border-blue-300 transition-all duration-150 hover:border-blue-600 focus:border-purple-900 outline-none"
           />
@@ -626,7 +702,7 @@ function PlayerCardContentProvider(props) {
       labels: [],
       datasets: [
         {
-          label: "SLP",
+          label: "MMR",
           data: [],
           fill: false,
           backgroundColor: "rgb(40,144,146)",
@@ -1716,6 +1792,7 @@ function Dashboard() {
           let d = data.status;
           let final = [];
           for (const i of d) {
+            try{
             final.push({
               name: i.userName,
               gameName: i.slp.name.split(" | "),
@@ -1733,9 +1810,14 @@ function Dashboard() {
               notifies: "",
               ronin: i.userRoninAddr,
               axies: {},
-              axieAvatar: "",
+              axieAvatar: i.avatar ?? "placeholder-avatar.png",
               axiesLoaded: 0,
             });
+          }
+          catch
+          {
+            continue;
+          }
           }
           console.log("from server", final);
           setPlayers(final);
@@ -1771,7 +1853,10 @@ function Dashboard() {
           }
         })
         .then((data) => {
-          console.log(`${inRonin} playerData: `, data);
+          console.log(`${inRonin} playerData: `, data, data.status.avatar);
+          UIStore.update((s) => {
+            s.axieTable[newPlayer].axieAvatar = data.status.avatar ?? 'placeholder-avatar.png';
+          });
           setPlayerInfoLoaded(1);
         })
         .catch((error) => {
@@ -1796,7 +1881,6 @@ function Dashboard() {
           console.log(`${inRonin} playerAxies: `, data);
           UIStore.update((s) => {
             s.axieTable[newPlayer].axies = data.axies;
-            s.axieTable[newPlayer].axieAvatar = data.axies[0].image;
             s.axieTable[newPlayer].axiesLoaded = 1;
           });
           setPlayerAxiesLoaded(1);
@@ -1805,8 +1889,6 @@ function Dashboard() {
           console.log(error);
         });
     } else {
-      setPlayerInfoLoaded(0);
-      setPlayerAxiesLoaded(0);
       console.log("hello 2");
     }
   }
@@ -1848,7 +1930,7 @@ function Dashboard() {
                 <div className="flex flex-col mb-8 md:w-64 w-full text-center md:text-left">
                   <div className="avatar w-full h-auto flex justify-center">
                     <img
-                      src={selectedPlayer !== -1 && playerAxiesLoaded * playerInfoLoaded ? axieTable[selectedPlayer].axieAvatar : ""}
+                      src={(selectedPlayer !== -1 && playerAxiesLoaded * playerInfoLoaded && axieTable[selectedPlayer].axieAvatar !== '') ? ('http://axietracker.tw1.ru'+axieTable[selectedPlayer].axieAvatar) : "placeholder-avatar.png"}
                       width="256px"
                       height="256px"
                       alt="player avatar"
@@ -1886,7 +1968,7 @@ function Dashboard() {
                     >
                       &nbsp;&nbsp;Tracking&nbsp;&nbsp;
                     </button>
-                    <button
+                    {/*<button
                       onClick={() => {
                         if (selectedButton !== 2)
                           UIStore.update((s) => {
@@ -1896,7 +1978,7 @@ function Dashboard() {
                       className={"p-2 font-bold transition-all duration-150 border-b-2 " + (selectedButton === 2 ? "selected-button" : "non-selected-button")}
                     >
                       &nbsp;&nbsp;Notifications&nbsp;&nbsp;
-                    </button>
+                    </button>*/}
                   </div>
                   <PlayerCardContentProvider id={selectedButton} data={axieTable[selectedPlayer]}></PlayerCardContentProvider>
                 </div>
