@@ -7,6 +7,7 @@ import { BrowserRouter as Router, Switch, Route } from "react-router-dom";
 import { Error } from "./ErrorPage";
 import { Analytics } from "./Analytics";
 import { Guild } from "./Guild";
+import {GuildCreation} from './GuildCreation';
 
 function App() {
   return (
@@ -30,6 +31,11 @@ function App() {
         <Route exact path="/error">
           <PageHolder>
             <Error />
+          </PageHolder>
+        </Route>
+        <Route exact path="/createguild">
+          <PageHolder>
+            <GuildCreation />
           </PageHolder>
         </Route>
         <Route path="/guild/:guildName">

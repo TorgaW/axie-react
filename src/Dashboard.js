@@ -2,10 +2,21 @@ import { Header, Content, Footer } from "./Base";
 import React from "react";
 import { UIStore } from "./UIStore";
 import { LoadingComponent } from "./LoadingComponent";
-import { formatRFC7231, add, fromUnixTime, format, toDate, parseISO, differenceInDays, getDayOfYear, closestIndexTo } from "date-fns";
+import {
+  formatRFC7231,
+  add,
+  sub,
+  compareDesc,
+  compareAsc,
+  fromUnixTime,
+  format,
+  toDate,
+  parseISO,
+  differenceInDays,
+  getDayOfYear,
+  closestIndexTo,
+} from "date-fns";
 import { Line, Bar } from "react-chartjs-2";
-
-const clamp = (a, min = 0, max = 1) => Math.min(max, Math.max(min, a));
 
 function TableCellComponent(props) {
   /*
@@ -64,17 +75,18 @@ function TableCellComponent(props) {
       });
   }
 
-  function HandleUploadImage(e)
-  {
+  function HandleUploadImage(e) {
     let file = e.target.files[0];
-    if(!file){return;}
+    if (!file) {
+      return;
+    }
     let a = file.name.split(".");
-    let size = (file.size / 1024) / 1024;
+    let size = file.size / 1024 / 1024;
     if (size > 1.5) {
       alert(`Maximum size is 1.5 MB!`);
       return;
     } else {
-      let t = document.getElementById('quest-name');
+      let t = document.getElementById("quest-name");
       console.log(props);
       Object.defineProperty(file, "name", {
         writable: true,
@@ -82,11 +94,11 @@ function TableCellComponent(props) {
       });
     }
     let form = new FormData();
-    form.append('file', file, file.name);
+    form.append("file", file, file.name);
 
     fetch("/api/changeAvatar", {
       method: "POST",
-      body: form
+      body: form,
     })
       .then((response) => {
         if (response.ok) {
@@ -96,19 +108,16 @@ function TableCellComponent(props) {
         }
       })
       .then((data) => {
-
         console.log(data);
-
       })
       .catch((error) => {
-        console.log(error)
+        console.log(error);
       });
-
   }
 
   return (
     <tr className="h-20 border-4 border-blue-300">
-      <input onChange={HandleUploadImage} id={'ava-inp-'+props.order} className='hidden' type="file" />
+      <input onChange={HandleUploadImage} id={"ava-inp-" + props.order} className="hidden" type="file" />
       <td className="font-bold">{props.order ?? "?"}</td> {/* # */}
       <td
         onClick={() => {
@@ -125,11 +134,17 @@ function TableCellComponent(props) {
       </td>{" "}
       {/* player name */}
       <td className="flex justify-center pt-2">
-        <img onClick={()=>{
-
-          document.getElementById('ava-inp-'+props.order).click();
-
-        }} width="50" height="50" className="rounded-full border-2 border-purple-800 cursor-pointer" src={"placeholder-avatar.png"} alt="" /> {/* Avatar */}
+        <img
+          onClick={() => {
+            document.getElementById("ava-inp-" + props.order).click();
+          }}
+          width="50"
+          height="50"
+          className="rounded-full border-2 border-purple-800 cursor-pointer"
+          src={axieTable[props.id - 1].axieAvatar}
+          alt=""
+        />{" "}
+        {/* Avatar */}
       </td>
       <td>{props.content ? props.content.team : ""}</td> {/* Team */}
       <td>{props.content ? props.content.formation : "?"}</td> {/* Axie formation */}
@@ -141,20 +156,22 @@ function TableCellComponent(props) {
       <td style={{ maxWidth: "200px" }}>{props.content ? formatRFC7231(props.content.nextClaim) : "?"}</td> {/* Next Claim */}
       <td className="">
         {/*props.content ? props.content.qualityTracker : "?"*/}
-        <div
-          className={
-            "w-4 h-4 ml-16 custom-bg-" +
-            (props.content
-              ? props.content.qualityTracker === 0
-                ? "green"
-                : props.content.qualityTracker === 1
-                ? "yellow"
-                : props.content.qualityTracker === 2
-                ? "red"
-                : "gray"
-              : "black")
-          }
-        ></div>
+        <div className={"h-4 w-full flex justify-center"}>
+          <div
+            className={
+              "w-4 h-4 custom-bg-" +
+              (props.content
+                ? props.content.qualityTracker === 0
+                  ? "green"
+                  : props.content.qualityTracker === 1
+                  ? "yellow"
+                  : props.content.qualityTracker === 2
+                  ? "red"
+                  : "gray"
+                : "black")
+            }
+          ></div>
+        </div>
       </td>
       {/* Quality Tracker */}
       {/*<td>{props.content ? props.content.telegram : "?"}</td>  Telegram */}
@@ -268,7 +285,7 @@ function TableComponent(props) {
   let counter = 1;
 
   function FillTableCells() {
-    console.log('cellss', copyPropsContent);
+    console.log("cellss", copyPropsContent);
     for (const i of copyPropsContent) {
       tableCells.push(
         <TableCellComponent
@@ -333,11 +350,11 @@ function TableComponent(props) {
         tableCells.sort((a, b) => a.props.content.formation.localeCompare(b.props.content.formation));
         tableCells.reverse();
         break;
-      case "slp":
+      case "slp-reversed":
         FillTableCells();
         tableCells.sort((a, b) => a.props.content.slp - b.props.content.slp);
         break;
-      case "slp-reversed":
+      case "slp":
         FillTableCells();
         tableCells.sort((a, b) => a.props.content.slp - b.props.content.slp);
         tableCells.reverse();
@@ -528,7 +545,7 @@ function TableControlComponent() {
     let fields = document.querySelectorAll('[id$="-inp"]');
     console.log(fields);
 
-    if (fields && fields.length < 6) {
+    if (fields && fields.length < 4) {
       return;
     }
 
@@ -536,12 +553,16 @@ function TableControlComponent() {
     let ronin = fields[1].value;
     let perc = fields[2].value;
     let limit = fields[3].value;
-    let team = fields[4].value;
-    let formation = fields[5].value;
 
-    console.log();
-
-    if (name.trim().length < 1 || ronin.trim().length !== 46 || perc.trim().length < 1 || limit.trim().length < 1 || !ronin.split(':')[1] || !(/^\d+$/.test(perc)) || !(/^\d+$/.test(limit))) {
+    if (
+      name.trim().length < 1 ||
+      ronin.trim().length !== 46 ||
+      perc.trim().length < 1 ||
+      limit.trim().length < 1 ||
+      !ronin.split(":")[1] ||
+      !/^\d+$/.test(perc) ||
+      !/^\d+$/.test(limit)
+    ) {
       return;
     }
 
@@ -553,7 +574,7 @@ function TableControlComponent() {
 
     fetch("/api/addTracker", {
       method: "POST",
-      body: JSON.stringify({ name: name, ronin: ronin.split(':')[1], percentage: perc, limit: limit }),
+      body: JSON.stringify({ name: name, ronin: ronin.split(":")[1], percentage: perc, limit: limit }),
       headers: {
         "Content-Type": "application/json",
       },
@@ -566,7 +587,7 @@ function TableControlComponent() {
         }
       })
       .then((data) => {
-        console.log(data);
+        console.log("addtracker", data);
         let i = data.status;
         addPlayer({
           name: name,
@@ -583,10 +604,11 @@ function TableControlComponent() {
           mmr: i.mmr,
           telegram: "",
           notifies: "",
-          ronin: ronin.split(':')[1],
+          ronin: ronin.split(":")[1],
           axies: {},
-          axieAvatar: i.avatar ?? 'placeholder-avatar.png',
+          axieAvatar: i.avatar ?? "placeholder-avatar.png",
           axiesLoaded: 0,
+          source: i,
         });
       })
       .catch((error) => {
@@ -643,7 +665,7 @@ function TableControlComponent() {
             className="border-2 h-full min-w-0 rounded-lg px-2 border-blue-300 transition-all duration-150 hover:border-blue-600 focus:border-purple-900 outline-none"
           />
         </div>
-        <div className="flex items-center h-10 mt-1">
+        {/* <div className="flex items-center h-10 mt-1">
           <label htmlFor="slp-limit-inp" className="pr-2 text-left font-bold text-lg w-40">
             Team:
           </label>
@@ -664,7 +686,7 @@ function TableControlComponent() {
             type="text"
             className="border-2 h-full min-w-0 rounded-lg px-2 border-blue-300 transition-all duration-150 hover:border-blue-600 focus:border-purple-900 outline-none"
           />
-        </div>
+        </div> */}
       </div>
       <button
         onClick={AddNewPlayer}
@@ -815,7 +837,7 @@ function PlayerCardContentProvider(props) {
           fLabels = [];
           fData = [];
 
-          for (let i = allPlayerInfo.length - 1; i >= (allPlayerInfo.length >= (360*3) ? allPlayerInfo.length - (360*3) : 0); i--) {
+          for (let i = allPlayerInfo.length - 1; i >= (allPlayerInfo.length >= 360 * 3 ? allPlayerInfo.length - 360 * 3 : 0); i--) {
             console.log("test days", allPlayerInfo[i]);
             fLabels.push(format(parseISO(allPlayerInfo[i].date), "MM/dd/yyyy"));
             fData.push(allPlayerInfo[i].slpPerDay);
@@ -839,17 +861,15 @@ function PlayerCardContentProvider(props) {
           });
           break;
 
-        case 'custom':
+        case "custom":
           fData = [];
           fLabels = [];
-          let slpInpFrom = document.getElementById('inp-slp-from');
-          let slpInpTo = document.getElementById('inp-slp-to');
-          if(slpInpFrom && slpInpTo)
-          {
+          let slpInpFrom = document.getElementById("inp-slp-from");
+          let slpInpTo = document.getElementById("inp-slp-to");
+          if (slpInpFrom && slpInpTo) {
             let slpCustomTimeFrom = parseISO(slpInpFrom.value);
             let slpCustomTimeTo = parseISO(slpInpTo.value);
-            if(!isNaN(slpCustomTimeFrom) && !isNaN(slpCustomTimeTo))
-            {
+            if (!isNaN(slpCustomTimeFrom) && !isNaN(slpCustomTimeTo)) {
               let allDates = [];
               for (const i of allPlayerInfo) {
                 allDates.push(parseISO(i.date));
@@ -862,7 +882,7 @@ function PlayerCardContentProvider(props) {
                 fLabels.push(format(parseISO(allPlayerInfo[i].date), "MM/dd/yyyy"));
                 fData.push(allPlayerInfo[i].slpPerDay);
               }
-    
+
               setSLPData({
                 type: "custom",
                 data: {
@@ -879,7 +899,6 @@ function PlayerCardContentProvider(props) {
                   ],
                 },
               });
-
             }
           }
           break;
@@ -991,7 +1010,7 @@ function PlayerCardContentProvider(props) {
           fLabels = [];
           fData = [];
 
-          for (let i = allPlayerInfo.length - 1; i >= (allPlayerInfo.length >= (360*3) ? allPlayerInfo.length - (360*3) : 0); i--) {
+          for (let i = allPlayerInfo.length - 1; i >= (allPlayerInfo.length >= 360 * 3 ? allPlayerInfo.length - 360 * 3 : 0); i--) {
             console.log("test days", allPlayerInfo[i]);
             fLabels.push(format(parseISO(allPlayerInfo[i].date), "MM/dd/yyyy"));
             fData.push(allPlayerInfo[i].mmrPerDay);
@@ -1015,17 +1034,15 @@ function PlayerCardContentProvider(props) {
           });
           break;
 
-        case 'custom':
+        case "custom":
           fData = [];
           fLabels = [];
-          let slpInpFrom = document.getElementById('inp-mmr-from');
-          let slpInpTo = document.getElementById('inp-mmr-to');
-          if(slpInpFrom && slpInpTo)
-          {
+          let slpInpFrom = document.getElementById("inp-mmr-from");
+          let slpInpTo = document.getElementById("inp-mmr-to");
+          if (slpInpFrom && slpInpTo) {
             let slpCustomTimeFrom = parseISO(slpInpFrom.value);
             let slpCustomTimeTo = parseISO(slpInpTo.value);
-            if(!isNaN(slpCustomTimeFrom) && !isNaN(slpCustomTimeTo))
-            {
+            if (!isNaN(slpCustomTimeFrom) && !isNaN(slpCustomTimeTo)) {
               let allDates = [];
               for (const i of allPlayerInfo) {
                 allDates.push(parseISO(i.date));
@@ -1038,7 +1055,7 @@ function PlayerCardContentProvider(props) {
                 fLabels.push(format(parseISO(allPlayerInfo[i].date), "MM/dd/yyyy"));
                 fData.push(allPlayerInfo[i].mmrPerDay);
               }
-    
+
               setMMRData({
                 type: "custom",
                 data: {
@@ -1055,7 +1072,6 @@ function PlayerCardContentProvider(props) {
                   ],
                 },
               });
-
             }
           }
           break;
@@ -1097,7 +1113,7 @@ function PlayerCardContentProvider(props) {
               datasets: [
                 {
                   label: "%",
-                  data: [((allPlayerInfo[allPlayerInfo.length - 1].slpPerDay / allPlayerInfo[allPlayerInfo.length - 1].dailySlpLimit) * 100).toFixed(1) ],
+                  data: [((allPlayerInfo[allPlayerInfo.length - 1].slpPerDay / allPlayerInfo[allPlayerInfo.length - 1].dailySlpLimit) * 100).toFixed(1)],
                   fill: false,
                   backgroundColor: "rgb(52, 211, 153)",
                   borderColor: "rgba(52, 211, 153, 0.3)",
@@ -1114,7 +1130,7 @@ function PlayerCardContentProvider(props) {
           for (let i = allPlayerInfo.length - 1; i >= (allPlayerInfo.length >= 7 ? allPlayerInfo.length - 7 : 0); i--) {
             console.log("test days", allPlayerInfo[i]);
             fLabels.push(format(parseISO(allPlayerInfo[i].date), "MM/dd/yyyy"));
-            fData.push(((allPlayerInfo[i].slpPerDay / allPlayerInfo[i].dailySlpLimit) * 100).toFixed(1) );
+            fData.push(((allPlayerInfo[i].slpPerDay / allPlayerInfo[i].dailySlpLimit) * 100).toFixed(1));
           }
 
           setLIMITData({
@@ -1142,7 +1158,7 @@ function PlayerCardContentProvider(props) {
           for (let i = allPlayerInfo.length - 1; i >= (allPlayerInfo.length >= 30 ? allPlayerInfo.length - 30 : 0); i--) {
             console.log("test days", allPlayerInfo[i]);
             fLabels.push(format(parseISO(allPlayerInfo[i].date), "MM/dd/yyyy"));
-            fData.push(((allPlayerInfo[i].slpPerDay / allPlayerInfo[i].dailySlpLimit) * 100).toFixed(1) );
+            fData.push(((allPlayerInfo[i].slpPerDay / allPlayerInfo[i].dailySlpLimit) * 100).toFixed(1));
           }
 
           setLIMITData({
@@ -1167,10 +1183,10 @@ function PlayerCardContentProvider(props) {
           fLabels = [];
           fData = [];
 
-          for (let i = allPlayerInfo.length - 1; i >= (allPlayerInfo.length >= (360*3) ? allPlayerInfo.length - (360*3) : 0); i--) {
+          for (let i = allPlayerInfo.length - 1; i >= (allPlayerInfo.length >= 360 * 3 ? allPlayerInfo.length - 360 * 3 : 0); i--) {
             console.log("test days", allPlayerInfo[i]);
             fLabels.push(format(parseISO(allPlayerInfo[i].date), "MM/dd/yyyy"));
-            fData.push(((allPlayerInfo[i].slpPerDay / allPlayerInfo[i].dailySlpLimit) * 100).toFixed(1) );
+            fData.push(((allPlayerInfo[i].slpPerDay / allPlayerInfo[i].dailySlpLimit) * 100).toFixed(1));
           }
 
           setLIMITData({
@@ -1191,17 +1207,15 @@ function PlayerCardContentProvider(props) {
           });
           break;
 
-        case 'custom':
+        case "custom":
           fData = [];
           fLabels = [];
-          let slpInpFrom = document.getElementById('inp-limit-from');
-          let slpInpTo = document.getElementById('inp-limit-to');
-          if(slpInpFrom && slpInpTo)
-          {
+          let slpInpFrom = document.getElementById("inp-limit-from");
+          let slpInpTo = document.getElementById("inp-limit-to");
+          if (slpInpFrom && slpInpTo) {
             let slpCustomTimeFrom = parseISO(slpInpFrom.value);
             let slpCustomTimeTo = parseISO(slpInpTo.value);
-            if(!isNaN(slpCustomTimeFrom) && !isNaN(slpCustomTimeTo))
-            {
+            if (!isNaN(slpCustomTimeFrom) && !isNaN(slpCustomTimeTo)) {
               let allDates = [];
               for (const i of allPlayerInfo) {
                 allDates.push(parseISO(i.date));
@@ -1212,9 +1226,9 @@ function PlayerCardContentProvider(props) {
 
               for (let i = start; i <= stop; i++) {
                 fLabels.push(format(parseISO(allPlayerInfo[i].date), "MM/dd/yyyy"));
-                fData.push(((allPlayerInfo[i].slpPerDay / allPlayerInfo[i].dailySlpLimit) * 100).toFixed(1) );
+                fData.push(((allPlayerInfo[i].slpPerDay / allPlayerInfo[i].dailySlpLimit) * 100).toFixed(1));
               }
-    
+
               setLIMITData({
                 type: "custom",
                 data: {
@@ -1231,7 +1245,6 @@ function PlayerCardContentProvider(props) {
                   ],
                 },
               });
-
             }
           }
           break;
@@ -1243,7 +1256,7 @@ function PlayerCardContentProvider(props) {
   }
 
   function FirstSetLIMITData(data) {
-    console.log('object,,',((data.slpPerDay / data.dailySlpLimit) * 100).toFixed(1));
+    console.log("object,,", ((data.slpPerDay / data.dailySlpLimit) * 100).toFixed(1));
     setLIMITData({
       type: "today",
       data: {
@@ -1520,9 +1533,25 @@ function PlayerCardContentProvider(props) {
             </div>
             <div className="w-full h-auto flex flex-col my-2 font-bold px-2">
               From
-              <input onChange={()=>{ChangeSLPData('custom');}} className="border-2 rounded-lg border-purple-300 hover:border-purple-800" type="date" name="" id="inp-slp-from" />
+              <input
+                onChange={() => {
+                  ChangeSLPData("custom");
+                }}
+                className="border-2 rounded-lg border-purple-300 hover:border-purple-800"
+                type="date"
+                name=""
+                id="inp-slp-from"
+              />
               To
-              <input onChange={()=>{ChangeSLPData('custom');}} className="border-2 rounded-lg border-purple-300 hover:border-purple-800" type="date" name="" id="inp-slp-to" />
+              <input
+                onChange={() => {
+                  ChangeSLPData("custom");
+                }}
+                className="border-2 rounded-lg border-purple-300 hover:border-purple-800"
+                type="date"
+                name=""
+                id="inp-slp-to"
+              />
             </div>
             {SLPDataGraphType ? (
               <Bar
@@ -1547,18 +1576,20 @@ function PlayerCardContentProvider(props) {
                 }}
               />
             )}
-            <div className='w-full flex text-center items-center font-bold text-purple-800'>
-            Line graph
+            <div className="w-full flex text-center items-center font-bold text-purple-800">
+              Line graph
               <label className="switch mx-4">
-                <input onClick={()=>{
-                  setSLPDataGraphType(!SLPDataGraphType);
-                }} type="checkbox" />
+                <input
+                  onClick={() => {
+                    setSLPDataGraphType(!SLPDataGraphType);
+                  }}
+                  type="checkbox"
+                />
                 <span className="slider round"></span>
               </label>
             </div>
 
             {/* next graph */}
-
 
             <h3 className="text-4xl font-bold my-4 mt-16">MMR</h3>
             <div className="w-full h-auto flex justify-between">
@@ -1597,9 +1628,25 @@ function PlayerCardContentProvider(props) {
             </div>
             <div className="w-full h-auto flex flex-col my-2 font-bold px-2">
               From
-              <input onChange={()=>{ChangeMMRData('custom');}} className="border-2 rounded-lg border-purple-300 hover:border-purple-800" type="date" name="" id="inp-mmr-from" />
+              <input
+                onChange={() => {
+                  ChangeMMRData("custom");
+                }}
+                className="border-2 rounded-lg border-purple-300 hover:border-purple-800"
+                type="date"
+                name=""
+                id="inp-mmr-from"
+              />
               To
-              <input onChange={()=>{ChangeMMRData('custom');}} className="border-2 rounded-lg border-purple-300 hover:border-purple-800" type="date" name="" id="inp-mmr-to" />
+              <input
+                onChange={() => {
+                  ChangeMMRData("custom");
+                }}
+                className="border-2 rounded-lg border-purple-300 hover:border-purple-800"
+                type="date"
+                name=""
+                id="inp-mmr-to"
+              />
             </div>
             {MMRDataGraphType ? (
               <Bar
@@ -1624,20 +1671,20 @@ function PlayerCardContentProvider(props) {
                 }}
               />
             )}
-            <div className='w-full flex text-center items-center font-bold text-purple-800'>
-            Line graph
+            <div className="w-full flex text-center items-center font-bold text-purple-800">
+              Line graph
               <label className="switch mx-4">
-                <input onClick={()=>{
-                  setMMRDataGraphType(!MMRDataGraphType);
-                }} type="checkbox" />
+                <input
+                  onClick={() => {
+                    setMMRDataGraphType(!MMRDataGraphType);
+                  }}
+                  type="checkbox"
+                />
                 <span className="slider round"></span>
               </label>
             </div>
 
-
-
             {/* next graph */}
-
 
             <h3 className="text-4xl font-bold my-4 mt-16 text-center">Daily SLP Limit completed, %</h3>
             <div className="w-full h-auto flex justify-between">
@@ -1676,9 +1723,25 @@ function PlayerCardContentProvider(props) {
             </div>
             <div className="w-full h-auto flex flex-col my-2 font-bold px-2">
               From
-              <input onChange={()=>{ChangeLIMITData('custom');}} className="border-2 rounded-lg border-purple-300 hover:border-purple-800" type="date" name="" id="inp-limit-from" />
+              <input
+                onChange={() => {
+                  ChangeLIMITData("custom");
+                }}
+                className="border-2 rounded-lg border-purple-300 hover:border-purple-800"
+                type="date"
+                name=""
+                id="inp-limit-from"
+              />
               To
-              <input onChange={()=>{ChangeLIMITData('custom');}} className="border-2 rounded-lg border-purple-300 hover:border-purple-800" type="date" name="" id="inp-limit-to" />
+              <input
+                onChange={() => {
+                  ChangeLIMITData("custom");
+                }}
+                className="border-2 rounded-lg border-purple-300 hover:border-purple-800"
+                type="date"
+                name=""
+                id="inp-limit-to"
+              />
             </div>
             {LIMITDataGraphType ? (
               <Bar
@@ -1703,12 +1766,15 @@ function PlayerCardContentProvider(props) {
                 }}
               />
             )}
-            <div className='w-full flex text-center items-center font-bold text-purple-800'>
-            Line graph
+            <div className="w-full flex text-center items-center font-bold text-purple-800">
+              Line graph
               <label className="switch mx-4">
-                <input onClick={()=>{
-                  setLIMITDataGraphType(!LIMITDataGraphType);
-                }} type="checkbox" />
+                <input
+                  onClick={() => {
+                    setLIMITDataGraphType(!LIMITDataGraphType);
+                  }}
+                  type="checkbox"
+                />
                 <span className="slider round"></span>
               </label>
             </div>
@@ -1726,11 +1792,865 @@ function PlayerCardContentProvider(props) {
   }
 }
 
+function ArenaTableCellComponent(props) {
+  /*
+  
+    @param props.order - order in table
+    @param props.content - cells text
+  
+    //////
+    часы
+    #
+    Name
+    Avg Daily SLP
+    Yesterday SLP
+    Unclaimed SLP
+    Next Claim
+    Team
+    Formation
+    Quality
+    //////
+  
+    */
+
+  console.log(props);
+
+  return (
+    <tr className="h-16 border-4 border-blue-300">
+      <td className="font-bold">{props.order ?? "?"}</td> {/* # */}
+      <td className="font-bold">{props.content.name ?? "?"}</td> {/* Name */}
+      <td className="font-bold">{props.content.source.slp.rank ?? "?"}</td> {/* Rank */}
+      <td className="font-bold">{props.content.elo ?? " "}</td> {/* ELO*/}
+      <td className="font-bold">{props.content.team ?? "?"}</td> {/* Team */}
+      <td className="font-bold">{props.content.formation ?? "?"}</td> {/* Formation */}
+      <td className="">
+        <div className={"h-4 w-full flex justify-center"}>
+          <div
+            className={
+              "w-4 h-4 custom-bg-" +
+              (props.content
+                ? props.content.qualityTracker === 0
+                  ? "green"
+                  : props.content.qualityTracker === 1
+                  ? "yellow"
+                  : props.content.qualityTracker === 2
+                  ? "red"
+                  : "gray"
+                : "black")
+            }
+          ></div>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function ArenaTableComponent() {
+  let axieTable = UIStore.useState((s) => s.axieTable);
+  let final = [];
+  let counter = 0;
+  for (const i of axieTable) {
+    counter++;
+    final.push(<ArenaTableCellComponent order={counter} content={i} />);
+  }
+
+  return (
+    <div className="md:w-11/12 w-full py-4 flex justify-center self-center">
+      <div className="mt-2 w-full self-center overflow-x-auto">
+        <table
+          className="table table-auto w-full"
+          style={{
+            minWidth: 1200,
+          }}
+        >
+          <thead>
+            <tr className="border-t-2 border-b-2 h-12 bg-blue-300 text-xl text-center">
+              <th className="transition-all duration-150 border-4 border-blue-300">&nbsp;&nbsp;#&nbsp;&nbsp;</th>
+              <th className="transition-all duration-150 border-4 border-blue-300">Name</th>
+              <th className="transition-all duration-150 border-4 border-blue-300">Rank</th>
+              <th className="transition-all duration-150 border-4 border-blue-300">ELO</th>
+              <th className="transition-all duration-150 border-4 border-blue-300">Team</th>
+              <th className="transition-all duration-150 border-4 border-blue-300">Formation</th>
+              <th className="transition-all duration-150 border-4 border-blue-300">Quality Tracker</th>
+            </tr>
+          </thead>
+          <tbody className="text-center text-lg">{final}</tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function ControlPanel(props) {
+  let axieTable = UIStore.useState((s) => s.axieTable);
+  let teams = UIStore.useState((s) => s.teams);
+  let formations = UIStore.useState((s) => s.formations);
+
+  const [teamOptions, setTeamOptions] = React.useState([]);
+  const [formationOptions, setFormationOptions] = React.useState([]);
+  const [playerOptions, setPlayerOptions] = React.useState([]);
+
+  React.useEffect(() => {
+    try {
+      let a = [];
+      for (const i of teams) {
+        a.push(<option value={i}>{i}</option>);
+      }
+      setTeamOptions(a);
+    } catch {}
+  }, [teams]);
+
+  React.useEffect(() => {
+    try {
+      let a = [];
+      for (const i of formations) {
+        a.push(<option value={i}>{i}</option>);
+      }
+      setFormationOptions(a);
+    } catch {}
+  }, [formations]);
+
+  React.useEffect(() => {
+    try {
+      let a = [];
+      for (const i of axieTable) {
+        a.push(<option value={i.name}>{i.name}</option>);
+      }
+      setPlayerOptions(a);
+    } catch {}
+  }, [axieTable]);
+
+  React.useEffect(() => {
+    fetch("/api/getTeams", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    })
+      .then((response) => {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error(response.status);
+        }
+      })
+      .then((data) => {
+        try {
+          for (const i of data.status) {
+            UIStore.update((s) => {
+              s.teams = [...s.teams, i.teamName];
+            });
+          }
+        } catch {}
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  }, []);
+
+  React.useEffect(() => {
+    fetch("/api/getFormations", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    })
+      .then((response) => {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error(response.status);
+        }
+      })
+      .then((data) => {
+        console.log(data.status);
+        try {
+          for (const i of data.status) {
+            UIStore.update((s) => {
+              s.formations = [...s.formations, i.formationName];
+            });
+          }
+        } catch {}
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  }, []);
+
+  function CreateNewTeam(e) {
+    let val = e.value;
+    if (!val || val.trim().length < 3) {
+      alert("Bad team name!");
+      return;
+    }
+
+    fetch("/api/teamCreate", {
+      method: "POST",
+      body: JSON.stringify({ teamName: val }),
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    })
+      .then((response) => {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error(response.status);
+        }
+      })
+      .then((data) => {
+        if (!teams.includes(val)) {
+          UIStore.update((s) => {
+            s.teams = [...s.teams, val];
+          });
+        } else {
+          alert("already exist!");
+          return;
+        }
+
+        alert(data.status);
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  }
+
+  function CreateNewFormation(name, player) {
+    if (!name || name.trim().length < 3) {
+      alert("Bad formation name!");
+      return;
+    }
+
+    let a = axieTable.filter((e) => e.name === player);
+    if (!a[0]) {
+      alert("Error");
+      return;
+    }
+
+    fetch("/api/createFormation", {
+      method: "POST",
+      body: JSON.stringify({ formationName: name, ronin: a[0].ronin }),
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    })
+      .then((response) => {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error(response.status);
+        }
+      })
+      .then((data) => {
+        if (!formations.includes(name)) {
+          UIStore.update((s) => {
+            s.formations = [...s.formations, name];
+          });
+          UIStore.update((s) => {
+            for (const i of s.axieTable) {
+              if (i.name === player) i.formation = name;
+            }
+          });
+        } else {
+          alert("already exist!");
+          return;
+        }
+
+        alert(data.status);
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  }
+
+  function DeleteFormation(name) {
+    if (!name || name.trim().length < 3) {
+      return;
+    }
+
+    fetch("/api/deleteFormation", {
+      method: "POST",
+      body: JSON.stringify({ formationName: name }),
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    })
+      .then((response) => {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error(response.status);
+        }
+      })
+      .then((data) => {
+        UIStore.update((s) => {
+          s.formations = s.formations.filter((s) => s !== name);
+        });
+        alert(data.status);
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  }
+
+  function DeleteTeam(name) {
+    if (!name || name.trim().length < 3) {
+      return;
+    }
+
+    fetch("/api/deleteTeam", {
+      method: "POST",
+      body: JSON.stringify({ teamName: name }),
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    })
+      .then((response) => {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error(response.status);
+        }
+      })
+      .then((data) => {
+        UIStore.update((s) => {
+          s.teams = s.teams.filter((s) => s !== name);
+        });
+        alert(data.status);
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  }
+
+  function AttachPlayerToTheTeam(player, name) {
+    if (!name || name.trim().length < 3) {
+      return;
+    }
+
+    let a = axieTable.filter((e) => e.name === player);
+    if (!a[0]) {
+      alert("Error");
+      return;
+    }
+
+    fetch("/api/teamAddPerson", {
+      method: "POST",
+      body: JSON.stringify({ teamName: name, ronin: a[0].ronin }),
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    })
+      .then((response) => {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error(response.status);
+        }
+      })
+      .then((data) => {
+        UIStore.update((s) => {
+          for (const i of s.axieTable) {
+            if (i.name === player) i.team = name;
+          }
+        });
+        alert(data.status);
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  }
+
+  function RemovePlayerFromTheTeam(player, name) {
+    if (!name || name.trim().length < 3) {
+      return;
+    }
+
+    let a = axieTable.filter((e) => e.name === player);
+    if (!a[0]) {
+      alert("Error");
+      return;
+    }
+
+    fetch("/api/deletePerson", {
+      method: "POST",
+      body: JSON.stringify({ teamName: name, ronin: a[0].ronin }),
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    })
+      .then((response) => {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error(response.status);
+        }
+      })
+      .then((data) => {
+        UIStore.update((s) => {
+          for (const i of s.axieTable) {
+            if (i.name === player) i.team = "N/A";
+          }
+        });
+        alert(data.status);
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  }
+
+  function AttachPlayerToTheFormation(player, name) {
+    if (!name || name.trim().length < 3) {
+      return;
+    }
+
+    let a = axieTable.filter((e) => e.name === player);
+    if (!a[0]) {
+      alert("Error");
+      return;
+    }
+
+    fetch("/api/teamAddPerson", {
+      method: "POST",
+      body: JSON.stringify({ teamName: name, ronin: a[0].ronin }),
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    })
+      .then((response) => {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error(response.status);
+        }
+      })
+      .then((data) => {
+        UIStore.update((s) => {
+          for (const i of s.axieTable) {
+            if (i.name === player) i.team = name;
+          }
+        });
+        alert(data.status);
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  }
+
+  function RemovePlayerFromTheFormation(player, name) {
+    if (!name || name.trim().length < 3) {
+      return;
+    }
+
+    let a = axieTable.filter((e) => e.name === player);
+    if (!a[0]) {
+      alert("Error");
+      return;
+    }
+
+    fetch("/api/deletePerson", {
+      method: "POST",
+      body: JSON.stringify({ teamName: name, ronin: a[0].ronin }),
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    })
+      .then((response) => {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error(response.status);
+        }
+      })
+      .then((data) => {
+        UIStore.update((s) => {
+          for (const i of s.axieTable) {
+            if (i.name === player) i.team = "N/A";
+          }
+        });
+        alert(data.status);
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  }
+
+  return (
+    <div className="md:w-11/12 w-full mt-10 self-center">
+      <div className="w-full flex items-center">
+        <label className="pr-2 text-left font-bold text-lg w-56">New team name:</label>
+        <input type="text" id="new-team-input" className="w-40 h-10 border-2 rounded-lg border-purple-300 p-2" />
+        <button
+          onClick={() => {
+            CreateNewTeam(document.getElementById("new-team-input"));
+          }}
+          className="rounded-lg bg-green-300 hover:bg-green-700 transition-all duration-150 p-2 font-bold ml-4 hover:text-white"
+        >
+          Create new team!
+        </button>
+      </div>
+      <div className="w-full flex items-center mt-4">
+        <label className="pr-2 text-left font-bold text-lg w-56">Attach player:</label>
+        <select name="" id="selection-player-attach-team" className="w-40 h-10 border-2 rounded-lg border-purple-300 p-2">
+          {playerOptions}
+        </select>
+        <span className="text-lg font-bold mx-2">to the team</span>
+        <select name="" id="selection-team-attach-team" className="w-40 h-10 border-2 rounded-lg border-purple-300 p-2">
+          {teamOptions}
+        </select>
+        <button
+          onClick={() => {
+            AttachPlayerToTheTeam(document.getElementById("selection-player-attach-team").value, document.getElementById("selection-team-attach-team").value);
+          }}
+          className="rounded-lg bg-green-300 hover:bg-green-700 transition-all duration-150 p-2 font-bold ml-4 hover:text-white"
+        >
+          Attach!
+        </button>
+      </div>
+      <div className="w-full flex items-center mt-4">
+        <label className="pr-2 text-left font-bold text-lg w-56">Remove player:</label>
+        <select name="" id="selection-player-remove-team" className="w-40 h-10 border-2 rounded-lg border-purple-300 p-2">
+          {playerOptions}
+        </select>
+        <span className="text-lg font-bold mx-2">from the team</span>
+        <select name="" id="selection-team-remove-team" className="w-40 h-10 border-2 rounded-lg border-purple-300 p-2">
+          {teamOptions}
+        </select>
+        <button
+          onClick={() => {
+            RemovePlayerFromTheTeam(document.getElementById("selection-player-remove-team").value, document.getElementById("selection-team-remove-team").value);
+          }}
+          className="rounded-lg bg-red-300 hover:bg-red-700 transition-all duration-150 p-2 font-bold ml-4 hover:text-white"
+        >
+          Delete!
+        </button>
+      </div>
+      <div className="w-full flex items-center mt-4">
+        <label className="pr-2 text-left font-bold text-lg w-56">Delete team:</label>
+        <select name="" id="selection-team-delete" className="w-40 h-10 border-2 rounded-lg border-purple-300 p-2">
+          {teamOptions}
+        </select>
+        <button
+          onClick={() => {
+            DeleteTeam(document.getElementById("selection-team-delete").value);
+          }}
+          className="rounded-lg bg-red-300 hover:bg-red-700 transition-all duration-150 p-2 font-bold ml-4 hover:text-white"
+        >
+          Delete team
+        </button>
+      </div>
+      <div className="w-full flex items-center mt-4">
+        <label className="pr-2 text-left font-bold text-lg w-56">New formation name:</label>
+        <input type="text" id="new-formation-input" className="w-40 h-10 border-2 rounded-lg border-purple-300 p-2" />
+        <span className="text-lg font-bold mx-2">for player</span>
+        <select name="" id="selection-player-new-formation" className="w-40 h-10 border-2 rounded-lg border-purple-300 p-2">
+          {playerOptions}
+        </select>
+        <button
+          onClick={() => {
+            CreateNewFormation(document.getElementById("new-formation-input").value, document.getElementById("selection-player-new-formation").value);
+          }}
+          className="rounded-lg bg-green-300 hover:bg-green-700 transition-all duration-150 p-2 font-bold ml-4 hover:text-white"
+        >
+          Create new formation!
+        </button>
+      </div>
+      {/*<><div className="w-full flex items-center mt-4">
+        <label className="pr-2 text-left font-bold text-lg w-56">Attach player:</label>
+        <select name="" id="selection-player-attach-team" className="w-40 h-10 border-2 rounded-lg border-purple-300 p-2">
+          {playerOptions}
+        </select>
+        <span className="text-lg font-bold mx-2">to the formation</span>
+        <select name="" id="selection-team-attach-team" className="w-40 h-10 border-2 rounded-lg border-purple-300 p-2">
+          {teamOptions}
+        </select>
+        <button
+          onClick={() => {
+            AttachPlayerToTheTeam(document.getElementById("selection-player-attach-team").value, document.getElementById("selection-team-attach-team").value);
+          }}
+          className="rounded-lg bg-green-300 hover:bg-green-700 transition-all duration-150 p-2 font-bold ml-4 hover:text-white"
+        >
+          Attach!
+        </button>
+      </div>
+      <div className="w-full flex items-center mt-4">
+        <label className="pr-2 text-left font-bold text-lg w-56">Remove player:</label>
+        <select name="" id="selection-player-remove-team" className="w-40 h-10 border-2 rounded-lg border-purple-300 p-2">
+          {playerOptions}
+        </select>
+        <span className="text-lg font-bold mx-2">from the formation</span>
+        <select name="" id="selection-team-remove-team" className="w-40 h-10 border-2 rounded-lg border-purple-300 p-2">
+          {teamOptions}
+        </select>
+        <button
+          onClick={() => {
+            RemovePlayerFromTheTeam(document.getElementById("selection-player-remove-team").value, document.getElementById("selection-team-remove-team").value);
+          }}
+          className="rounded-lg bg-red-300 hover:bg-red-700 transition-all duration-150 p-2 font-bold ml-4 hover:text-white"
+        >
+          Delete!
+        </button>
+        </div></>*/}
+      <div className="w-full flex items-center mt-4">
+        <label className="pr-2 text-left font-bold text-lg w-56">Delete formation:</label>
+        <select name="" id="selection-formation-delete" className="w-40 h-10 border-2 rounded-lg border-purple-300 p-2">
+          {formationOptions}
+        </select>
+        <button
+          onClick={() => {
+            DeleteFormation(document.getElementById("selection-formation-delete").value);
+          }}
+          className="rounded-lg bg-red-300 hover:bg-red-700 transition-all duration-150 p-2 font-bold ml-4 hover:text-white"
+        >
+          Delete formation
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function QualityTrackerComponent(props) {
+  let axieTable = UIStore.useState((s) => s.axieTable);
+  let qualityTracker = UIStore.useState((s) => s.qualityTracker);
+
+  const [usersData, setUsersData] = React.useState({});
+
+  function GetOnlyValidUsers(inData) {
+    let a = {};
+    try {
+      for (const i of axieTable) {
+        a[i.name] = inData.filter((t) => t.userName === i.name);
+      }
+    } catch {
+      return a;
+    }
+    return a;
+  }
+
+  function CalculateQT() {
+    if (qualityTracker.settings.period <= 0) {
+      UIStore.update((s) => {
+        for (const i of s.axieTable) {
+          i.qualityTracker = 3;
+        }
+      });
+    } else {
+      let limit = sub(new Date(), { days: qualityTracker.settings.period });
+      let n = {};
+      let slpMin = Math.min(parseInt(document.getElementById('inp-custom-int-1').value),parseInt(document.getElementById('inp-custom-int-2').value));
+      let slpMax = Math.max(parseInt(document.getElementById('inp-custom-int-1').value),parseInt(document.getElementById('inp-custom-int-2').value));
+      let biggestSLP = 0;
+      for (const i in qualityTracker.data) {
+        if (Object.hasOwnProperty.call(qualityTracker.data, i)) {
+          const player = qualityTracker.data[i];
+          let b = player.filter((q) => {
+            return compareDesc(parseISO(q.date), limit) === 1 ? true : false;
+          });
+          let meanValue = 0;
+          for (const j of b) {
+            meanValue += j.slp.in_game_slp;
+          }
+          meanValue = meanValue / b.length;
+          n[i] = { mean: meanValue };
+          biggestSLP = meanValue > biggestSLP ? meanValue : biggestSLP;
+        }
+      }
+
+      if(document.getElementById('inp-cb').checked)
+      {
+        for (const i in n) {
+          if (Object.hasOwnProperty.call(n, i)) {
+            const element = n[i];
+            if(element.mean)
+            {
+              if(element.mean >= biggestSLP)
+              {
+                n[i].res = 100;
+              }
+              else
+              {
+                n[i].res = (element.mean / biggestSLP)*100;
+              }
+            }
+          }
+        }
+      }
+
+      console.log('nnnn',n);
+
+      UIStore.update((s) => {
+        for (const i of s.axieTable) {
+
+
+          if(document.getElementById('inp-cb').checked)
+          {
+            if(n[i.name] && n[i.name].res && n[i.name].res > slpMax)
+            {
+              i.qualityTracker = 0;
+            }
+            else if(n[i.name] && n[i.name].res && n[i.name].res >= slpMin && n[i.name].res <= slpMax)
+            {
+              i.qualityTracker = 1;
+            } 
+            else if(n[i.name] && n[i.name].res && n[i.name].res < slpMin)
+            {
+              i.qualityTracker = 2;
+            }
+            else
+            {
+              i.qualityTracker = 3;
+            }
+          }
+
+          else
+          {
+            if(n[i.name] && n[i.name].mean && n[i.name].mean > slpMax)
+            {
+              i.qualityTracker = 0;
+            }
+            else if(n[i.name] && n[i.name].mean && n[i.name].mean >= slpMin && n[i.name].mean <= slpMax)
+            {
+              i.qualityTracker = 1;
+            } 
+            else if(n[i.name] && n[i.name].mean && n[i.name].mean < slpMin)
+            {
+              i.qualityTracker = 2;
+            }
+            else
+            {
+              i.qualityTracker = 3;
+            }
+          }
+
+
+        }
+      });
+    }
+  }
+
+  React.useEffect(() => {
+    fetch("/api/getAllUsers", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    })
+      .then((response) => {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error(response.status);
+        }
+      })
+      .then((data) => {
+        if (data.status !== "no tracker exist") {
+          let a = GetOnlyValidUsers(data.status);
+          setUsersData(a);
+          UIStore.update((s) => {
+            s.qualityTracker.data = a;
+          });
+        }
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  }, [axieTable]);
+
+  React.useEffect(() => {
+    console.log("realtime qt", qualityTracker);
+  }, [qualityTracker]);
+
+  return usersData ? (
+    <div className="md:w-11/12 w-full mt-10 self-center">
+      <div className="w-full h-10 flex items-center">
+        <h4 className="border-t-2 border-b-2 border-purple-100 mr-2 font-bold text-xl">Select period:</h4>
+        <button
+          onClick={() => {
+            UIStore.update((s) => {
+              s.qualityTracker.settings.period = 1;
+            });
+          }}
+          className="border-t-2 border-b-2 border-purple-300 border-l-2 px-2 hover:border-purple-800"
+        >
+          Yesterday
+        </button>
+        <button
+          onClick={() => {
+            UIStore.update((s) => {
+              s.qualityTracker.settings.period = 7;
+            });
+          }}
+          className="border-t-2 border-b-2 border-purple-300 px-2 hover:border-purple-800"
+        >
+          7 days
+        </button>
+        <button
+          onClick={() => {
+            UIStore.update((s) => {
+              s.qualityTracker.settings.period = 30;
+            });
+          }}
+          className="border-t-2 border-b-2 border-purple-300 border-r-2 px-2 hover:border-purple-800 mr-2"
+        >
+          30 days
+        </button>
+        Custom
+        <input
+          onChange={(e) => {
+            UIStore.update((s) => {
+              s.qualityTracker.settings.period = e.target.value === "" ? 0 : parseInt(e.target.value);
+            });
+          }}
+          type="number"
+          name=""
+          id="inp-custom-period"
+          className="border-t-2 border-b-2 px-2 w-20 border-purple-300 mx-2"
+        />
+        days
+      </div>
+      <div className="w-full h-10 flex items-center">
+        <h4 className="border-t-2 border-b-2 border-purple-100 mr-2 font-bold text-xl">Select interval for slp:</h4>
+        from
+        <input type="number" name="" id="inp-custom-int-1" className="border-t-2 border-b-2 px-2 w-20 border-purple-300 mx-2" />
+        to
+        <input type="number" name="" id="inp-custom-int-2" className="border-t-2 border-b-2 px-2 w-20 border-purple-300 mx-2" />
+      </div>
+      <div className="w-full h-10 flex items-center font-bold">
+        Use percentage?
+        <input type="checkbox" name="" id="inp-cb" className="border-t-2 border-b-2 px-2 w-4 h-4 border-purple-300 mx-2" />
+      </div>
+      <button
+        onClick={() => {
+          CalculateQT();
+        }}
+        className="rounded-lg bg-green-300 hover:bg-green-700 transition-all duration-150 p-2 font-bold hover:text-white"
+      >
+        Submit
+      </button>
+    </div>
+  ) : (
+    <LoadingComponent responsive={true} text={"Waiting for API"} />
+  );
+}
+
 function Dashboard() {
   let axieTable = UIStore.useState((s) => s.axieTable);
   let selectedPlayer = UIStore.useState((s) => s.selectedPlayer);
   let selectedButton = UIStore.useState((s) => s.selectedButton);
   let slpToDollar = UIStore.useState((s) => s.slpToDollar);
+
+  const [showSLP, setShowSLP] = React.useState(true);
 
   const [playersLoaded, setPlayersLoaded] = React.useState(0);
   const [slpToDollarLoaded, setSlpToDollarLoaded] = React.useState(0);
@@ -1792,32 +2712,31 @@ function Dashboard() {
           let d = data.status;
           let final = [];
           for (const i of d) {
-            try{
-            final.push({
-              name: i.userName,
-              gameName: i.slp.name.split(" | "),
-              team: "N/A",
-              formation: "N/A",
-              slp: i.slp.in_game_slp,
-              slpDailyLimit: i.dailySlpLimit,
-              slpPerDay: i.slpPerDay,
-              slpManager: i.slp.in_game_slp * i.userPercentage * 0.01,
-              slpManagerPerc: i.userPercentage,
-              nextClaim: fromUnixTime(i.slp.next_claim),
-              qualityTracker: 3,
-              mmr: i.slp.mmr,
-              telegram: "",
-              notifies: "",
-              ronin: i.userRoninAddr,
-              axies: {},
-              axieAvatar: i.avatar ?? "placeholder-avatar.png",
-              axiesLoaded: 0,
-            });
-          }
-          catch
-          {
-            continue;
-          }
+            try {
+              final.push({
+                name: i.userName,
+                gameName: i.slp.name.split(" | "),
+                team: i.team ?? "N/A",
+                formation: i.formationName ?? "N/A",
+                slp: i.slp.in_game_slp,
+                slpDailyLimit: i.dailySlpLimit,
+                slpPerDay: i.slpPerDay,
+                slpManager: i.slp.in_game_slp * i.userPercentage * 0.01,
+                slpManagerPerc: i.userPercentage,
+                nextClaim: fromUnixTime(i.slp.next_claim),
+                qualityTracker: 3,
+                mmr: i.slp.mmr,
+                telegram: "",
+                notifies: "",
+                ronin: i.userRoninAddr,
+                axies: {},
+                axieAvatar: i.avatar ?? "placeholder-avatar.png",
+                axiesLoaded: 0,
+                source: i,
+              });
+            } catch {
+              continue;
+            }
           }
           console.log("from server", final);
           setPlayers(final);
@@ -1855,7 +2774,7 @@ function Dashboard() {
         .then((data) => {
           console.log(`${inRonin} playerData: `, data, data.status.avatar);
           UIStore.update((s) => {
-            s.axieTable[newPlayer].axieAvatar = data.status.avatar ?? 'placeholder-avatar.png';
+            s.axieTable[newPlayer].axieAvatar = data.status.avatar ?? "placeholder-avatar.png";
           });
           setPlayerInfoLoaded(1);
         })
@@ -1920,7 +2839,25 @@ function Dashboard() {
           </div>
           <p className="text-xl font-bold mt-4 text-center">Players online: {"0"}</p>
           <TilesComponent></TilesComponent>
-          <TableComponent content={axieTable} getPlayerInfo={GetPlayerInfo}></TableComponent>
+          <div className="w-full h-12 flex justify-center mt-10">
+            <button
+              onClick={() => {
+                if (!showSLP) setShowSLP(true);
+              }}
+              className="flex w-56 h-full justify-center items-center border-2 border-purple-800 transition-all duration-150 hover:bg-purple-600 bg-blue-300 rounded-xl font-bold text-xl"
+            >
+              💰 SLP
+            </button>
+            <button
+              onClick={() => {
+                if (showSLP) setShowSLP(false);
+              }}
+              className="flex w-56 h-full justify-center items-center border-2 border-purple-800 transition-all duration-150 hover:bg-purple-600 bg-blue-300 rounded-xl font-bold text-xl ml-2"
+            >
+              🏆 Arena
+            </button>
+          </div>
+          {showSLP ? <TableComponent content={axieTable} getPlayerInfo={GetPlayerInfo} /> : <ArenaTableComponent />}
           <h2 className="mt-10 md:text-4xl text-2xl text-center font-bold">Add new player</h2>
           <TableControlComponent></TableControlComponent>
           <div className="my-10 h-0.5 md:w-11/12 w-full self-center border-blue-300" style={{ borderWidth: 1 }}></div>
@@ -1930,7 +2867,14 @@ function Dashboard() {
                 <div className="flex flex-col mb-8 md:w-64 w-full text-center md:text-left">
                   <div className="avatar w-full h-auto flex justify-center">
                     <img
-                      src={(selectedPlayer !== -1 && playerAxiesLoaded * playerInfoLoaded && axieTable[selectedPlayer].axieAvatar !== '') ? ('http://axietracker.tw1.ru'+axieTable[selectedPlayer].axieAvatar) : "placeholder-avatar.png"}
+                      src={
+                        selectedPlayer !== -1 &&
+                        playerAxiesLoaded * playerInfoLoaded &&
+                        axieTable[selectedPlayer].axieAvatar !== "" &&
+                        axieTable[selectedPlayer].axieAvatar !== "placeholder-avatar.png"
+                          ? "http://axietracker.tw1.ru" + axieTable[selectedPlayer].axieAvatar
+                          : "placeholder-avatar.png"
+                      }
                       width="256px"
                       height="256px"
                       alt="player avatar"
@@ -1987,6 +2931,11 @@ function Dashboard() {
           ) : (
             <LoadingComponent responsive={true} text={"Waiting for API"} />
           )}
+          <div className="my-10 h-0.5 md:w-11/12 w-full self-center border-blue-300" style={{ borderWidth: 1 }}></div>
+          <ControlPanel content={axieTable} />
+          <div className="my-10 h-0.5 md:w-11/12 w-full self-center border-blue-300" style={{ borderWidth: 1 }}></div>
+          <h2 className="mt-10 md:text-4xl text-2xl text-center font-bold">Quality Tracker</h2>
+          <QualityTrackerComponent />
         </div>
       </Content>
       <Footer>

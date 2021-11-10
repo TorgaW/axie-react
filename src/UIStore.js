@@ -112,11 +112,14 @@ const UIStore = new Store({
   //   axiesLoaded: 0,
   // }],
   axieTable: [],
+  teams: [],
+  formations: [],
   roninCache: {},
   selectedPlayer: -1,
   selectedButton: 0,
   slpToDollar: '0.00000',
   getPlayerInfo: ()=>{},
+  qualityTracker: {settings: {period: 0, calcType: 0, slpInterval: '0-0', slpPercInterval: '0-0'}, data:{},},
 });
 
 const AnalyticsStore = new Store({

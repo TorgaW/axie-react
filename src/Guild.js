@@ -31,30 +31,186 @@ function TableCellComponent(props) {
       <td className="font-bold">{props.order ?? "?"}</td> {/* Avg Daily SLP */}
       <td className="font-bold">{props.order ?? "?"}</td> {/* Yesterday SLP */}
       <td className="font-bold">{props.order ?? "?"}</td> {/* Unclaimed SLP */}
-      <td className="font-bold">{props.order ?? (new Date().toISOString().slice(0,10))}</td> {/* Next Claim */}
+      <td className="font-bold">{props.order ?? new Date().toISOString().slice(0, 10)}</td> {/* Next Claim */}
       <td className="font-bold">{props.order ?? "?"}</td> {/* Team */}
       <td className="font-bold">{props.order ?? "?"}</td> {/* Formation */}
       <td className="">
-        <div
-          className={
-            "w-4 h-4 ml-16 xl:ml-20 custom-bg-" +
-            (props.content
-              ? props.content.qualityTracker === 0
-                ? "green"
-                : props.content.qualityTracker === 1
-                ? "yellow"
-                : props.content.qualityTracker === 2
-                ? "red"
-                : "gray"
-              : "black")
-          }
-        ></div>
+        <div className={"h-4 w-full flex justify-center"}>
+          <div
+            className={
+              "w-4 h-4 custom-bg-" +
+              (props.content
+                ? props.content.qualityTracker === 0
+                  ? "green"
+                  : props.content.qualityTracker === 1
+                  ? "yellow"
+                  : props.content.qualityTracker === 2
+                  ? "red"
+                  : "gray"
+                : "black")
+            }
+          ></div>
+        </div>
       </td>
     </tr>
   );
 }
 
+function ArenaTableCellComponent(props) {
+  /*
+  
+    @param props.order - order in table
+    @param props.content - cells text
+  
+    //////
+    часы
+    #
+    Name
+    Avg Daily SLP
+    Yesterday SLP
+    Unclaimed SLP
+    Next Claim
+    Team
+    Formation
+    Quality
+    //////
+  
+    */
+
+  return (
+    <tr className="h-16 border-4 border-blue-300">
+      <td className="font-bold">✅</td> {/* часы */}
+      <td className="font-bold">{props.order ?? "?"}</td> {/* # */}
+      <td className="font-bold">{props.order ?? "?"}</td> {/* Name */}
+      <td className="font-bold">{props.order ?? "?"}</td> {/* Rank */}
+      <td className="font-bold">{props.order ?? "?"}</td> {/* ELO*/}
+      <td className="font-bold">{props.order ?? "?"}</td> {/* Team */}
+      <td className="font-bold">{props.order ?? "?"}</td> {/* Formation */}
+      <td className="">
+        <div className={"h-4 w-full flex justify-center"}>
+          <div
+            className={
+              "w-4 h-4 custom-bg-" +
+              (props.content
+                ? props.content.qualityTracker === 0
+                  ? "green"
+                  : props.content.qualityTracker === 1
+                  ? "yellow"
+                  : props.content.qualityTracker === 2
+                  ? "red"
+                  : "gray"
+                : "black")
+            }
+          ></div>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function SLPTableComponent() {
+  return (
+    <div className="w-full py-4 flex justify-center">
+      <div className="mt-2 w-full self-center overflow-x-auto">
+        <table
+          className="table table-auto w-full"
+          style={{
+            minWidth: 1200,
+          }}
+        >
+          <thead>
+            <tr className="border-t-2 border-b-2 h-12 bg-blue-300 text-xl text-center">
+              <th className="transition-all duration-150 border-4 border-blue-300">
+                &nbsp;&nbsp;🕥&nbsp;&nbsp;
+              </th>
+              <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+                &nbsp;&nbsp;#&nbsp;&nbsp;
+              </th>
+              <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+                Name
+              </th>
+              <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+                Avg. Daily SLP
+              </th>
+              <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+                Yesterday SLP
+              </th>
+              <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+                Unclaimed SLP
+              </th>
+              <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+                Next Claim
+              </th>
+              <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+                Team
+              </th>
+              <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+                Formation
+              </th>
+              <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+                Quality Tracker
+              </th>
+            </tr>
+          </thead>
+          <tbody className="text-center text-lg">
+            <TableCellComponent />
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function ArenaTableComponent() {
+  return (
+    <div className="w-full py-4 flex justify-center">
+      <div className="mt-2 w-full self-center overflow-x-auto">
+        <table
+          className="table table-auto w-full"
+          style={{
+            minWidth: 1200,
+          }}
+        >
+          <thead>
+            <tr className="border-t-2 border-b-2 h-12 bg-blue-300 text-xl text-center">
+              <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+                &nbsp;&nbsp;🕥&nbsp;&nbsp;
+              </th>
+              <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+                &nbsp;&nbsp;#&nbsp;&nbsp;
+              </th>
+              <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+                Name
+              </th>
+              <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+                Rank
+              </th>
+              <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+                ELO
+              </th>
+              <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+                Team
+              </th>
+              <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+                Formation
+              </th>
+              <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
+                Quality Tracker
+              </th>
+            </tr>
+          </thead>
+          <tbody className="text-center text-lg">
+            <ArenaTableCellComponent />
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function Guild() {
+  const [showSLP, setShowSLP] = React.useState(true);
+
   const history = useHistory();
   const { guildName } = useParams();
 
@@ -105,54 +261,25 @@ function Guild() {
 
           <p className="self-start text-xl">Data last refreshed: DATE</p>
 
-          <div className="w-full py-4 flex justify-center">
-            <div className="mt-10 w-full self-center overflow-x-auto">
-              <table
-                className="table table-auto w-full"
-                style={{
-                  minWidth: 1200,
-                }}
-              >
-                <thead>
-                  <tr className="border-t-2 border-b-2 h-12 bg-blue-300 text-xl text-center">
-                    <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
-                      &nbsp;&nbsp;🕥&nbsp;&nbsp;
-                    </th>
-                    <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
-                      &nbsp;&nbsp;#&nbsp;&nbsp;
-                    </th>
-                    <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
-                      Name
-                    </th>
-                    <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
-                      Avg. Daily SLP
-                    </th>
-                    <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
-                      Yesterday SLP
-                    </th>
-                    <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
-                      Unclaimed SLP
-                    </th>
-                    <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
-                      Next Claim
-                    </th>
-                    <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
-                      Team
-                    </th>
-                    <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
-                      Formation
-                    </th>
-                    <th className="cursor-pointer hover:text-purple-700 hover:bg-gray-100 hover:border-gray-100 transition-all duration-150 border-4 border-blue-300">
-                      Quality Tracker
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="text-center text-lg">
-                  <TableCellComponent />
-                </tbody>
-              </table>
-            </div>
+          <div className="w-full h-12 flex justify-center mt-10">
+            <button
+              onClick={() => {
+                if (!showSLP) setShowSLP(true);
+              }}
+              className="flex w-56 h-full justify-center items-center border-2 border-purple-800 transition-all duration-150 hover:bg-purple-600 bg-blue-300 rounded-xl font-bold text-xl"
+            >
+              💰 SLP
+            </button>
+            <button
+              onClick={() => {
+                if (showSLP) setShowSLP(false);
+              }}
+              className="flex w-56 h-full justify-center items-center border-2 border-purple-800 transition-all duration-150 hover:bg-purple-600 bg-blue-300 rounded-xl font-bold text-xl ml-2"
+            >
+              🏆 Arena
+            </button>
           </div>
+          {showSLP ? <SLPTableComponent /> : <ArenaTableComponent />}
         </div>
       </Content>
       <Footer>
