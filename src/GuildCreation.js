@@ -2,6 +2,7 @@ import { Header, Content, Footer } from "./Base";
 import React from "react";
 import { useHistory, useParams } from "react-router";
 import { differenceInMinutes } from "date-fns";
+import { LoadingComponent } from "./LoadingComponent";
 
 /*
 
@@ -27,6 +28,38 @@ function GuildCreation() {
       </div>
     </>,
   ]);
+
+  const [session, setSession] = React.useState(false);
+
+    React.useEffect(()=>{
+        fetch("/api/sessionExist", {
+            method: "POST",
+            headers: {
+                Accept: "application/json",
+                "Content-Type": "application/json",
+            },
+        })
+            .then((response) => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error(response.status);
+                }
+            })
+            .then((data) => {
+                if(data.status !== 'notexist')
+                {
+                    setSession(true);
+                }
+                else
+                {
+                    history.push('/login');
+                }
+            })
+            .catch((error) => {
+                console.log(error);
+            });
+    },[])
 
   function HandleUploadImage(file, name) {
     let a = file.name.split(".");
@@ -113,7 +146,7 @@ function GuildCreation() {
       .then((data) => {
         console.log(data);
         
-        if (data.status) {
+        if (data.status !== 'error') {
           HandleUploadImage(b.files[0],a);
         }
       })
@@ -122,17 +155,50 @@ function GuildCreation() {
       });
 
   }
-
-  return (
+  const history = useHistory();
+  return session ? (
     <>
       <Header>
-        <div className="w-48 ml-10 h-auto md:container md:ml-4">
-          <p className="font-bold text-white text-4xl leading-none">
-            AXIE<span className="text-xl text-black leading-none">Guild</span>
-          </p>
-          <p className=" font-thin text-white text-lg leading-none ml-4">infinity</p>
-          <div className="hidden fixed bg-pink-900 w-full h-40 bottom-0 left-0"></div>
-        </div>
+      <div className="w-full h-auto flex flex-col md:flex-row justify-between container">
+                    <div className="self-center ml-2">
+                        <p className="font-bold text-white text-4xl leading-none">
+                            AXIE<span className="text-xl text-black leading-none">Guilds</span>
+                        </p>
+                        <p className=" font-thin text-white text-lg leading-none ml-4">infinity</p>
+                    </div>
+                    <div className="flex mt-2 justify-center">
+                        <button
+                            onClick={() => {
+                                history.push("/dashboard");
+                            }}
+                            className="rounded-xl md:text-xl text-sm text-white hover:text-purple-300 transition-all duration-150 px-4 h-10"
+                        >
+                            Dashboard
+                        </button>
+                        <button
+                            onClick={() => {history.push('/analytics')}}
+                            className="rounded-xl md:text-xl text-sm text-white hover:text-purple-300 transition-all duration-150 px-4 h-10"
+                        >
+                            Analytics
+                        </button>
+                        {/* <button
+                            onClick={() => {
+                              history.push('/guilds')
+                            }}
+                            className="rounded-xl md:text-xl text-sm text-white hover:text-purple-300 transition-all duration-150 px-4 h-10"
+                        >
+                            Guilds
+                        </button> */}
+                        {/* <button
+                            onClick={() => {
+                                history.push("/login");
+                            }}
+                            className="rounded-xl md:text-xl text-sm text-white hover:text-purple-300 transition-all duration-150 px-4 h-10"
+                        >
+                            Log in
+                        </button> */}
+                    </div>
+                </div>
       </Header>
       <Content>
         <div className="w-full py-8 flex flex-col justify-center items-center px-10">
@@ -214,7 +280,7 @@ function GuildCreation() {
         </div>
       </Footer>
     </>
-  );
+  ) : <LoadingComponent />;
 }
 
 export { GuildCreation };

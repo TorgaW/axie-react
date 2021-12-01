@@ -119,6 +119,7 @@ const UIStore = new Store({
   selectedButton: 0,
   slpToDollar: '0.00000',
   getPlayerInfo: ()=>{},
+  fetchingPlayerInfo: {p: false, a: false},
   qualityTracker: {settings: {period: 0, calcType: 0, slpInterval: '0-0', slpPercInterval: '0-0'}, data:{},},
 });
 

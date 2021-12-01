@@ -27,7 +27,7 @@ function Content(props) {
     );
   
     return (
-      <div id="header" className="header w-full h-24 bg-purple-600 md:rounded-b-lg flex flex-col justify-center items-center">
+      <div id="header" className="header w-full h-auto py-4 bg-purple-600 md:rounded-b-lg flex flex-col justify-center items-center">
         {props.children ?? render}
       </div>
     );

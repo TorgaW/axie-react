@@ -1,18 +1,54 @@
 import { Header, Content, Footer } from "./Base";
 import React from "react";
+import { useHistory } from "react-router";
 
 function Error() {
+
+  const history = useHistory();
 
   return (
     <>
       <Header>
-        <div className="w-48 h-auto md:container md:ml-4">
-          <p className="font-bold text-white text-4xl leading-none">
-            AXIE<span className="text-xl text-black leading-none">Dashboard</span>
-          </p>
-          <p className=" font-thin text-white text-lg leading-none ml-4">infinity</p>
-          <div className="hidden fixed bg-pink-900 w-full h-40 bottom-0 left-0"></div>
-        </div>
+      <div className="w-full h-auto flex flex-col md:flex-row justify-between container">
+                    <div className="self-center ml-2">
+                        <p className="font-bold text-white text-4xl leading-none">
+                            AXIE<span className="text-xl text-black leading-none"></span>
+                        </p>
+                        <p className=" font-thin text-white text-lg leading-none ml-4">infinity</p>
+                    </div>
+                    <div className="flex mt-2 justify-center">
+                        <button
+                            onClick={() => {history.push('/dashboard')}}
+                            className="rounded-xl md:text-xl text-sm text-white hover:text-purple-300 transition-all duration-150 px-4 h-10"
+                        >
+                            Dashboard
+                        </button>
+                        <button
+                            onClick={() => {
+                                history.push("/analytics");
+                            }}
+                            className="rounded-xl md:text-xl text-sm text-white hover:text-purple-300 transition-all duration-150 px-4 h-10"
+                        >
+                            Analytics
+                        </button>
+                        {/* <button
+                            onClick={() => {
+                                history.push("/guilds");
+                            }}
+                            className="rounded-xl md:text-xl text-sm text-white hover:text-purple-300 transition-all duration-150 px-4 h-10"
+                        >
+                            Guilds
+                        </button> */}
+                        <button
+                            onClick={() => {
+                                history.push("/login");
+                            }}
+                            className="rounded-xl md:text-xl text-sm text-white hover:text-purple-300 transition-all duration-150 px-4 h-10"
+                        >
+                            Log in
+                        </button>
+                    </div>
+                </div>
       </Header>
       <Content>
         <div className="w-full h- flex justify-center items-center">

@@ -7,6 +7,7 @@ import { BrowserRouter as Router, Switch, Route } from "react-router-dom";
 import { Error } from "./ErrorPage";
 import { Analytics } from "./Analytics";
 import { Guild } from "./Guild";
+import { Guilds } from "./Guilds";
 import {GuildCreation} from './GuildCreation';
 
 function App() {
@@ -14,6 +15,11 @@ function App() {
     <Router>
       <Switch>
         <Route exact path="/">
+          <PageHolder>
+            <Dashboard />
+          </PageHolder>
+        </Route>
+        <Route exact path="/dashboard">
           <PageHolder>
             <Dashboard />
           </PageHolder>
@@ -38,6 +44,11 @@ function App() {
             <GuildCreation />
           </PageHolder>
         </Route>
+        {/* <Route path="/guilds">
+          <PageHolder>
+            <Guilds />
+          </PageHolder>
+        </Route> */}
         <Route path="/guild/:guildName">
           <PageHolder>
             <Guild />
